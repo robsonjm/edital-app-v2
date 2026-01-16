@@ -53,6 +53,25 @@ b) ...
 **Resposta Correta:** X
 **Explicação:** ...
 `;
+    } else if (action === "analisar_edital") {
+        isJsonMode = true;
+        prompt = `
+Analise o texto do edital fornecido e extraia as informações principais para criar um "Perfil do Concurso".
+Retorne APENAS um JSON válido com a seguinte estrutura:
+{
+  "nome_concurso": "Nome do Órgão / Cargo",
+  "banca": "Nome da Banca (ou 'Não identificada')",
+  "data_prova": "Data da prova (ou 'A definir')",
+  "salario": "Valor do salário/remuneração (ou 'Ver edital')",
+  "escolaridade": "Nível de escolaridade exigido",
+  "vagas": "Número de vagas (ou 'CR')",
+  "resumo_materias": ["Matéria 1", "Matéria 2", "Matéria 3", "etc"],
+  "etapas": ["Prova Objetiva", "Redação", "Títulos", "etc"]
+}
+
+Texto do Edital:
+${texto_edital.slice(0, 30000)}
+`;
     } else if (action === "simulado_real") {
         isJsonMode = true;
         prompt = `
