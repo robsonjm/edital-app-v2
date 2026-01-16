@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edital App V2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.2/marked.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8 text-center text-blue-500">Edital App V2.0 🚀</h1>
+
+        <div class="bg-gray-800 p-6 rounded-lg shadow-lg mb-6 border border-gray-700">
+            <h2 class="text-xl font-bold mb-4 text-blue-400">1. Carregar Edital</h2>
+            <input type="file" id="fileInput" accept="application/pdf" class="block w-full text-sm text-gray-400
+                file:mr-4 file:py-2 file:px-4
+                file:rounded-full file:border-0
+                file:text-sm file:font-semibold
+                file:bg-blue-600 file:text-white
+                hover:file:bg-blue-700
+            "/>
+            
+            <div class="flex gap-4 mt-4">
+                <button onclick="chamarBackend('plano')" class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded transition-colors">
+                    📄 Gerar Plano de Estudos
+                </button>
+                <button onclick="chamarBackend('quiz')" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-4 rounded transition-colors">
+                    ❓ Gerar Quiz Surpresa
+                </button>
+            </div>
+            <div id="status" class="mt-3 text-center text-yellow-400 hidden">Processando...</div>
+        </div>
+
+        <div id="resultadoArea" class="hidden bg-gray-800 p-8 rounded-lg shadow-lg border border-gray-700 prose prose-invert max-w-none"></div>
+    </div>
+
+    <script>
+        async function extractTextFromPDF(file) {
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+                let fullText = '';
+                
+                for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    fullText += `--- Página ${i} ---\n${pageText}\n`;
+                }
+                return fullText;
+            } catch (error) {
+                console.error("Erro ao ler PDF:", error);
+                throw new Error("Falha ao ler o arquivo PDF.");
+            }
+        }
+
+        async function chamarBackend(acao) {
+            const fileInput = document.getElementById('fileInput');
+            const statusDiv = document.getElementById('status');
+            const resultDiv = document.getElementById('resultadoArea');
+
+            if (fileInput.files.length === 0) { alert("Selecione um PDF primeiro!"); return; }
+
+            statusDiv.classList.remove('hidden');
+            statusDiv.innerText = "Lendo PDF e consultando a IA...";
+            resultDiv.classList.add('hidden');
+
+            try {
+                // 1. Extrai texto no navegador (economiza banda do servidor)
+                const text = await extractTextFromPDF(fileInput.files[0]);
+
+                // 2. Chama SUA função Python no Netlify
+                const response = await fetch('/.netlify/functions/api', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        text: text,
+                        action: acao,
+                        topic: "Conhecimentos Específicos"
+                    })
+                });
+
+                const raw = await response.text();
+                console.error('Resposta bruta da função:', response.status, raw);
+
+                let data = null;
+                try {
+                    data = raw ? JSON.parse(raw) : null;
+                } catch {
+                    throw new Error(`Status ${response.status} - corpo não JSON: ${raw.slice(0, 200) || '(vazio)'}`);
+                }
+                
+                if (!response.ok) {
+                    const msg = (data && data.error) || `Erro na API (${response.status})`;
+                    throw new Error(msg);
+                }
+
+                // 3. Renderiza
+                resultDiv.innerHTML = marked.parse(data.markdown);
+                resultDiv.classList.remove('hidden');
+
+            } catch (error) {
+                alert("Erro: " + error.message);
+            } finally {
+                statusDiv.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
