@@ -60,17 +60,17 @@ b) ...
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
-
-        const result = await model.generateContentStream({
+        
+        const result = await ai.models.generateContentStream({
+            model: "gemini-2.5-flash",
             contents: [{ role: "user", parts: [{ text: prompt }] }],
         });
 
         const stream = new ReadableStream({
             async start(controller) {
                 try {
-                    for await (const chunk of result.stream) {
-                        const chunkText = chunk.text();
+                    for await (const chunk of result) {
+                        const chunkText = chunk.text;
                         if (chunkText) {
                             controller.enqueue(new TextEncoder().encode(chunkText));
                         }
