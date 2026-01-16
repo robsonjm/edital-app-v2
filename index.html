@@ -205,7 +205,18 @@
                                 <span class="text-2xl">🧠</span>
                                 <div class="text-left">
                                     <div class="font-bold text-white">Desafio Quiz</div>
-                                    <div class="text-xs text-gray-400">Teste seus conhecimentos</div>
+                                    <div class="text-xs text-gray-400">Teste rápido</div>
+                                </div>
+                            </div>
+                        </button>
+
+                        <button onclick="chamarBackend('simulado_real')" class="group relative px-8 py-4 bg-gray-800 rounded-xl overflow-hidden transition-all hover:scale-105 hover:shadow-lg hover:shadow-red-900/30 border border-gray-700 hover:border-red-500/50">
+                            <div class="absolute inset-0 w-full h-full bg-gradient-to-br from-red-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div class="relative flex items-center gap-3">
+                                <span class="text-2xl">🎓</span>
+                                <div class="text-left">
+                                    <div class="font-bold text-white">Simulado Real</div>
+                                    <div class="text-xs text-gray-400">Estilo da Prova</div>
                                 </div>
                             </div>
                         </button>
@@ -228,6 +239,47 @@
             <section id="resultadoArea" class="hidden glass-card rounded-3xl p-8 sm:p-12 border border-white/10 shadow-2xl animate-fade-in-up">
                 <div class="prose prose-invert prose-lg max-w-none prose-headings:text-blue-300 prose-a:text-blue-400 prose-strong:text-white">
                     <!-- Markdown content goes here -->
+                </div>
+            </section>
+
+            <!-- Simulado Real Section -->
+            <section id="simuladoArea" class="hidden glass-card rounded-3xl p-6 sm:p-8 border border-white/10 shadow-2xl animate-fade-in-up relative">
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
+                    <div>
+                        <h2 id="simuladoTitle" class="text-2xl font-bold text-white">Simulado</h2>
+                        <span id="simuladoSubject" class="text-sm text-blue-400 font-semibold uppercase tracking-wider">Geral</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <div class="bg-gray-800 px-4 py-2 rounded-lg border border-gray-700 flex items-center gap-2">
+                            <span>⏱️</span>
+                            <span id="timerDisplay" class="font-mono text-xl font-bold text-yellow-400">00:00</span>
+                        </div>
+                        <div class="text-sm text-gray-400">
+                            Questão <span id="currentQuestionNum" class="text-white font-bold">1</span> de <span id="totalQuestionsNum">10</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Question Container -->
+                <div id="questionContainer" class="mb-8 min-h-[200px]">
+                    <p id="questionText" class="text-lg text-gray-200 mb-6 leading-relaxed"></p>
+                    <div id="optionsContainer" class="space-y-3">
+                        <!-- Options injected here -->
+                    </div>
+                </div>
+
+                <!-- Footer / Navigation -->
+                <div class="flex justify-between items-center mt-8 pt-6 border-t border-gray-700">
+                    <button id="prevBtn" class="px-6 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        ← Anterior
+                    </button>
+                    <button id="submitSimuladoBtn" class="hidden px-8 py-3 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold shadow-lg shadow-green-900/30 transition-all hover:scale-105">
+                        Finalizar Simulado
+                    </button>
+                    <button id="nextBtn" class="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg shadow-blue-900/30 transition-all hover:scale-105">
+                        Próxima →
+                    </button>
                 </div>
             </section>
         </main>
@@ -357,6 +409,11 @@
         `;
         document.head.appendChild(styleSheet);
 
+        let currentSimulado = null;
+        let currentQuestionIndex = 0;
+        let userAnswers = {};
+        let simuladoTimer = null;
+
         async function extractTextFromPDF(file) {
             try {
                 const arrayBuffer = await file.arrayBuffer();
@@ -380,9 +437,9 @@
             const fileInput = document.getElementById('fileInput');
             const statusDiv = document.getElementById('status');
             const resultDiv = document.getElementById('resultadoArea');
+            const simuladoDiv = document.getElementById('simuladoArea');
 
             if (fileInput.files.length === 0) { 
-                // Shake animation for error
                 fileInput.parentElement.classList.add('animate-bounce');
                 setTimeout(() => fileInput.parentElement.classList.remove('animate-bounce'), 1000);
                 alert("Por favor, arraste ou selecione um PDF primeiro!"); 
@@ -391,8 +448,7 @@
 
             statusDiv.classList.remove('hidden');
             resultDiv.classList.add('hidden');
-            
-            // Scroll to status
+            simuladoDiv.classList.add('hidden');
             statusDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
             try {
@@ -420,36 +476,29 @@
                     throw new Error(errorMsg);
                 }
 
-                resultDiv.innerHTML = '<div class="prose prose-invert prose-lg max-w-none prose-headings:text-blue-300 prose-a:text-blue-400 prose-strong:text-white"></div>';
-                const contentDiv = resultDiv.querySelector('div');
-                
-                resultDiv.classList.remove('hidden');
-                
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let markdown = "";
+                if (acao === 'simulado_real') {
+                    const data = await response.json();
+                    startSimulado(data);
+                } else {
+                    // Fluxo normal (Markdown Stream)
+                    resultDiv.innerHTML = '<div class="prose prose-invert prose-lg max-w-none prose-headings:text-blue-300 prose-a:text-blue-400 prose-strong:text-white"></div>';
+                    const contentDiv = resultDiv.querySelector('div');
+                    resultDiv.classList.remove('hidden');
+                    
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let markdown = "";
 
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-                    const chunk = decoder.decode(value, { stream: true });
-                    markdown += chunk;
-                    contentDiv.innerHTML = marked.parse(markdown);
-                }
-
-                // Success! Fire confetti
-                confetti({
-                    particleCount: 100,
-                    spread: 70,
-                    origin: { y: 0.6 },
-                    colors: ['#3b82f6', '#8b5cf6', '#ec4899']
-                });
-
-                // Scroll to results
-                resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-                if (window.saveGenerationToFirestore) {
-                    window.saveGenerationToFirestore(text, acao, markdown);
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        markdown += chunk;
+                        contentDiv.innerHTML = marked.parse(markdown);
+                    }
+                    
+                    finishAction(text, acao, markdown);
+                    resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
 
             } catch (error) {
@@ -457,6 +506,167 @@
             } finally {
                 statusDiv.classList.add('hidden');
             }
+        }
+
+        function finishAction(text, action, result) {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#3b82f6', '#8b5cf6', '#ec4899']
+            });
+            if (window.saveGenerationToFirestore) {
+                window.saveGenerationToFirestore(text, action, result);
+            }
+        }
+
+        // --- Lógica do Simulado ---
+
+        function startSimulado(data) {
+            currentSimulado = data;
+            currentQuestionIndex = 0;
+            userAnswers = {};
+            
+            document.getElementById('simuladoArea').classList.remove('hidden');
+            document.getElementById('simuladoTitle').innerText = data.exam_config.title || "Simulado";
+            document.getElementById('totalQuestionsNum').innerText = data.questions.length;
+            
+            // Timer
+            const duration = (data.exam_config.duration_minutes || 240) * 60;
+            startTimer(duration);
+
+            renderQuestion();
+            document.getElementById('simuladoArea').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function startTimer(durationSeconds) {
+            if (simuladoTimer) clearInterval(simuladoTimer);
+            let timer = durationSeconds;
+            const display = document.getElementById('timerDisplay');
+            
+            simuladoTimer = setInterval(function () {
+                let hours = parseInt(timer / 3600, 10);
+                let minutes = parseInt((timer % 3600) / 60, 10);
+                let seconds = parseInt(timer % 60, 10);
+
+                hours = hours < 10 ? "0" + hours : hours;
+                minutes = minutes < 10 ? "0" + minutes : minutes;
+                seconds = seconds < 10 ? "0" + seconds : seconds;
+
+                display.textContent = hours > 0 ? `${hours}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
+
+                if (--timer < 0) {
+                    clearInterval(simuladoTimer);
+                    alert("Tempo esgotado!");
+                    submitSimulado();
+                }
+            }, 1000);
+        }
+
+        function renderQuestion() {
+            const q = currentSimulado.questions[currentQuestionIndex];
+            
+            document.getElementById('currentQuestionNum').innerText = currentQuestionIndex + 1;
+            document.getElementById('simuladoSubject').innerText = q.subject || "Geral";
+            document.getElementById('questionText').innerText = q.question;
+            
+            const optsContainer = document.getElementById('optionsContainer');
+            optsContainer.innerHTML = '';
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = `w-full text-left p-4 rounded-xl border transition-all ${
+                    userAnswers[currentQuestionIndex] === idx 
+                    ? 'bg-blue-600/20 border-blue-500 text-white' 
+                    : 'bg-gray-800/50 border-gray-700 hover:bg-gray-700 text-gray-300'
+                }`;
+                btn.innerHTML = `<span class="font-bold mr-3">${String.fromCharCode(65+idx)})</span> ${opt}`;
+                btn.onclick = () => selectOption(idx);
+                optsContainer.appendChild(btn);
+            });
+
+            // Nav Buttons
+            document.getElementById('prevBtn').disabled = currentQuestionIndex === 0;
+            
+            const isLast = currentQuestionIndex === currentSimulado.questions.length - 1;
+            document.getElementById('nextBtn').classList.toggle('hidden', isLast);
+            document.getElementById('submitSimuladoBtn').classList.toggle('hidden', !isLast);
+        }
+
+        function selectOption(idx) {
+            userAnswers[currentQuestionIndex] = idx;
+            renderQuestion(); // Re-render to show selection
+        }
+
+        document.getElementById('prevBtn').onclick = () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuestion();
+            }
+        };
+
+        document.getElementById('nextBtn').onclick = () => {
+            if (currentQuestionIndex < currentSimulado.questions.length - 1) {
+                currentQuestionIndex++;
+                renderQuestion();
+            }
+        };
+
+        document.getElementById('submitSimuladoBtn').onclick = submitSimulado;
+
+        function submitSimulado() {
+            if (simuladoTimer) clearInterval(simuladoTimer);
+            
+            let score = 0;
+            let reportHtml = `
+                <h2 class="text-3xl font-bold mb-6 text-center">Resultado do Simulado</h2>
+                <div class="space-y-6">
+            `;
+
+            currentSimulado.questions.forEach((q, idx) => {
+                const userAnswer = userAnswers[idx];
+                const isCorrect = userAnswer === q.correct_option_index;
+                if (isCorrect) score++;
+
+                reportHtml += `
+                    <div class="p-6 rounded-xl border ${isCorrect ? 'bg-green-900/20 border-green-500/50' : 'bg-red-900/20 border-red-500/50'}">
+                        <div class="flex justify-between mb-2">
+                            <span class="font-bold text-sm text-gray-400">Questão ${idx + 1} - ${q.subject}</span>
+                            <span class="font-bold ${isCorrect ? 'text-green-400' : 'text-red-400'}">
+                                ${isCorrect ? 'Acertou! ✅' : 'Errou ❌'}
+                            </span>
+                        </div>
+                        <p class="mb-4 text-white">${q.question}</p>
+                        <p class="text-sm text-gray-300 mb-1">Sua resposta: <span class="font-bold">${userAnswer !== undefined ? String.fromCharCode(65+userAnswer) : '-'}</span></p>
+                        <p class="text-sm text-green-400 mb-2">Correta: <span class="font-bold">${String.fromCharCode(65+q.correct_option_index)}</span></p>
+                        <div class="bg-gray-900/50 p-3 rounded-lg text-sm text-gray-400 mt-3">
+                            <strong>Explicação:</strong> ${q.explanation}
+                        </div>
+                    </div>
+                `;
+            });
+
+            reportHtml += `</div>`;
+            
+            // Score Summary at top
+            const percentage = Math.round((score / currentSimulado.questions.length) * 100);
+            const summaryHtml = `
+                <div class="text-center mb-8 p-6 bg-gray-800 rounded-2xl border border-gray-700">
+                    <div class="text-6xl mb-2">${percentage >= 70 ? '🎉' : '📚'}</div>
+                    <div class="text-4xl font-bold text-white mb-2">${score}/${currentSimulado.questions.length}</div>
+                    <div class="text-xl ${percentage >= 70 ? 'text-green-400' : 'text-yellow-400'} font-bold">
+                        ${percentage}% de Aproveitamento
+                    </div>
+                </div>
+            `;
+
+            const resultDiv = document.getElementById('resultadoArea');
+            resultDiv.innerHTML = '<div class="prose prose-invert prose-lg max-w-none">' + summaryHtml + reportHtml + '</div>';
+            resultDiv.classList.remove('hidden');
+            document.getElementById('simuladoArea').classList.add('hidden');
+            resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+            finishAction(JSON.stringify(currentSimulado), "simulado_completed", `Score: ${score}/${currentSimulado.questions.length}`);
         }
     </script>
 </body>

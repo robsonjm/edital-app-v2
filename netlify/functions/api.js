@@ -31,6 +31,8 @@ export default async (request, context) => {
     const action = body.action || "plano";
 
     let prompt;
+    let isJsonMode = false;
+
     if (action === "plano") {
         prompt = `
 Aja como um tutor especialista. Com base no texto deste edital:
@@ -51,6 +53,34 @@ b) ...
 **Resposta Correta:** X
 **Explicação:** ...
 `;
+    } else if (action === "simulado_real") {
+        isJsonMode = true;
+        prompt = `
+Analise o texto do edital fornecido e extraia informações sobre a estrutura da prova (tempo, número de questões, matérias).
+Com base nisso, crie um SIMULADO REALÍSTICO.
+Se o edital não especificar número de questões, gere 10 questões seguindo a proporção de matérias.
+Retorne APENAS um JSON válido com esta estrutura, sem markdown:
+{
+  "exam_config": {
+    "title": "Nome do Concurso/Cargo",
+    "duration_minutes": 240,
+    "total_questions": 10
+  },
+  "questions": [
+    {
+      "id": 1,
+      "subject": "Português",
+      "question": "Texto da pergunta...",
+      "options": ["Opção A", "Opção B", "Opção C", "Opção D", "Opção E"],
+      "correct_option_index": 2,
+      "explanation": "Explicação detalhada..."
+    }
+  ]
+}
+
+Texto do Edital:
+${texto_edital.slice(0, 30000)}
+`;
     } else {
         return new Response(JSON.stringify({ error: "Ação inválida" }), {
             status: 400,
@@ -59,35 +89,52 @@ b) ...
     }
 
     try {
-        const ai = new GoogleGenAI({ apiKey });
+        const client = new GoogleGenAI({ apiKey });
         
-        const result = await ai.models.generateContentStream({
-            model: "gemini-2.5-flash",
-            contents: [{ role: "user", parts: [{ text: prompt }] }],
-        });
-
-        const stream = new ReadableStream({
-            async start(controller) {
-                try {
-                    for await (const chunk of result) {
-                        const chunkText = chunk.text;
-                        if (chunkText) {
-                            controller.enqueue(new TextEncoder().encode(chunkText));
-                        }
-                    }
-                    controller.close();
-                } catch (err) {
-                    controller.error(err);
+        // Se for JSON (Simulado), usa generateContent normal (não-stream) para garantir JSON válido
+        if (isJsonMode) {
+            const result = await client.models.generateContent({
+                model: "gemini-1.5-flash",
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                config: {
+                    responseMimeType: "application/json"
                 }
-            },
-        });
+            });
+            
+            return new Response(result.response.text(), {
+                headers: { "Content-Type": "application/json" }
+            });
 
-        return new Response(stream, {
-            headers: {
-                "Content-Type": "text/markdown; charset=utf-8",
-                "Transfer-Encoding": "chunked"
-            }
-        });
+        } else {
+            // Se for Texto/Markdown (Plano, Quiz simples), usa Stream
+            const result = await client.models.generateContentStream({
+                model: "gemini-1.5-flash",
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+            });
+
+            const stream = new ReadableStream({
+                async start(controller) {
+                    try {
+                        for await (const chunk of result.stream) {
+                            const chunkText = chunk.text();
+                            if (chunkText) {
+                                controller.enqueue(new TextEncoder().encode(chunkText));
+                            }
+                        }
+                        controller.close();
+                    } catch (err) {
+                        controller.error(err);
+                    }
+                },
+            });
+
+            return new Response(stream, {
+                headers: {
+                    "Content-Type": "text/markdown; charset=utf-8",
+                    "Transfer-Encoding": "chunked"
+                }
+            });
+        }
 
     } catch (e) {
         return new Response(JSON.stringify({ error: String(e.message || e) }), {
