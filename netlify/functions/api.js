@@ -1,33 +1,30 @@
 import { GoogleGenAI } from "@google/genai";
 
-export const handler = async (event, context) => {
+export default async (request, context) => {
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
-        return {
-            statusCode: 500,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ error: "API Key não configurada no servidor" })
-        };
+        return new Response(JSON.stringify({ error: "API Key não configurada no servidor" }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" }
+        });
     }
 
-    if (event.httpMethod && event.httpMethod !== "POST") {
-        return {
-            statusCode: 405,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ error: "Método não permitido" })
-        };
+    if (request.method !== "POST") {
+        return new Response(JSON.stringify({ error: "Método não permitido" }), {
+            status: 405,
+            headers: { "Content-Type": "application/json" }
+        });
     }
 
     let body;
     try {
-        body = JSON.parse(event.body || "{}");
+        body = await request.json();
     } catch {
-        return {
-            statusCode: 400,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ error: "Body inválido" })
-        };
+        return new Response(JSON.stringify({ error: "Body inválido" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" }
+        });
     }
 
     const texto_edital = body.text || "";
@@ -55,31 +52,47 @@ b) ...
 **Explicação:** ...
 `;
     } else {
-        return {
-            statusCode: 400,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ error: "Ação inválida" })
-        };
+        return new Response(JSON.stringify({ error: "Ação inválida" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" }
+        });
     }
 
     try {
         const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt
-        });
-        const text = response.text;
+        const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-        return {
-            statusCode: 200,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ markdown: text })
-        };
+        const result = await model.generateContentStream({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+        });
+
+        const stream = new ReadableStream({
+            async start(controller) {
+                try {
+                    for await (const chunk of result.stream) {
+                        const chunkText = chunk.text();
+                        if (chunkText) {
+                            controller.enqueue(new TextEncoder().encode(chunkText));
+                        }
+                    }
+                    controller.close();
+                } catch (err) {
+                    controller.error(err);
+                }
+            },
+        });
+
+        return new Response(stream, {
+            headers: {
+                "Content-Type": "text/markdown; charset=utf-8",
+                "Transfer-Encoding": "chunked"
+            }
+        });
+
     } catch (e) {
-        return {
-            statusCode: 500,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ error: String(e.message || e) })
-        };
+        return new Response(JSON.stringify({ error: String(e.message || e) }), {
+            status: 500,
+            headers: { "Content-Type": "application/json" }
+        });
     }
 };
