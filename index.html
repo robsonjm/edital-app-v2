@@ -186,46 +186,12 @@
                         </div>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div class="flex flex-col sm:flex-row gap-4 justify-center mt-8">
-                        <button onclick="chamarBackend('plano')" class="group relative px-8 py-4 bg-gray-800 rounded-xl overflow-hidden transition-all hover:scale-105 hover:shadow-lg hover:shadow-green-900/30 border border-gray-700 hover:border-green-500/50">
-                            <div class="absolute inset-0 w-full h-full bg-gradient-to-br from-green-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <div class="relative flex items-center gap-3">
-                                <span class="text-2xl">📅</span>
-                                <div class="text-left">
-                                    <div class="font-bold text-white">Criar Plano</div>
-                                    <div class="text-xs text-gray-400">Organize sua semana</div>
-                                </div>
-                            </div>
-                        </button>
-
-                        <button onclick="chamarBackend('quiz')" class="group relative px-8 py-4 bg-gray-800 rounded-xl overflow-hidden transition-all hover:scale-105 hover:shadow-lg hover:shadow-purple-900/30 border border-gray-700 hover:border-purple-500/50">
-                            <div class="absolute inset-0 w-full h-full bg-gradient-to-br from-purple-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <div class="relative flex items-center gap-3">
-                                <span class="text-2xl">🧠</span>
-                                <div class="text-left">
-                                    <div class="font-bold text-white">Desafio Quiz</div>
-                                    <div class="text-xs text-gray-400">Teste rápido</div>
-                                </div>
-                            </div>
-                        </button>
-
-                        <button onclick="chamarBackend('simulado_real')" class="group relative px-8 py-4 bg-gray-800 rounded-xl overflow-hidden transition-all hover:scale-105 hover:shadow-lg hover:shadow-red-900/30 border border-gray-700 hover:border-red-500/50">
-                            <div class="absolute inset-0 w-full h-full bg-gradient-to-br from-red-600/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <div class="relative flex items-center gap-3">
-                                <span class="text-2xl">🎓</span>
-                                <div class="text-left">
-                                    <div class="font-bold text-white">Simulado Real</div>
-                                    <div class="text-xs text-gray-400">Estilo da Prova</div>
-                                </div>
-                            </div>
-                        </button>
-                    </div>
-
+                    <!-- Action Buttons Removed - Replaced by Auto-Analysis -->
+                    
                     <!-- Loading State -->
                     <div id="status" class="hidden mt-8 max-w-md mx-auto">
                         <div class="flex justify-between text-sm text-blue-300 mb-2">
-                            <span>Processando Edital...</span>
+                            <span id="statusText">Analisando Edital...</span>
                             <span class="animate-pulse">IA trabalhando</span>
                         </div>
                         <div class="h-2 bg-gray-700 rounded-full overflow-hidden">
@@ -233,6 +199,79 @@
                         </div>
                     </div>
                 </div>
+            </section>
+
+            <!-- Contest Dashboard (Hidden initially) -->
+            <section id="contestDashboard" class="hidden animate-fade-in-up">
+                
+                <!-- Tabs Nav -->
+                <div class="glass-card rounded-2xl p-2 mb-8 flex flex-wrap sm:flex-nowrap gap-2 sticky top-24 z-30 backdrop-blur-xl">
+                    <button onclick="switchTab('visao-geral')" id="tab-visao-geral" class="tab-btn active w-full py-3 px-6 rounded-xl font-bold transition-all text-white bg-blue-600 shadow-lg shadow-blue-900/20">
+                        📊 Visão Geral
+                    </button>
+                    <button onclick="switchTab('plano-estudos')" id="tab-plano-estudos" class="tab-btn w-full py-3 px-6 rounded-xl font-bold transition-all text-gray-400 hover:text-white hover:bg-white/5">
+                        📅 Plano de Estudos
+                    </button>
+                    <button onclick="switchTab('treino')" id="tab-treino" class="tab-btn w-full py-3 px-6 rounded-xl font-bold transition-all text-gray-400 hover:text-white hover:bg-white/5">
+                        🧠 Treino
+                    </button>
+                </div>
+
+                <!-- Tab: Visão Geral -->
+                <div id="panel-visao-geral" class="tab-panel space-y-6">
+                    <!-- Title Card -->
+                    <div class="glass-card p-8 rounded-3xl border border-white/10 relative overflow-hidden">
+                        <div class="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                        <h2 id="dash-nome" class="text-3xl font-bold text-white mb-4 relative z-10">Analisando...</h2>
+                        <div class="flex flex-wrap gap-4 text-sm relative z-10">
+                            <span id="dash-banca" class="px-4 py-2 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 font-semibold">Banca: ...</span>
+                            <span id="dash-vagas" class="px-4 py-2 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 font-semibold">Vagas: ...</span>
+                            <span id="dash-salario" class="px-4 py-2 rounded-lg bg-green-500/20 text-green-300 border border-green-500/30 font-semibold">R$ ...</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <!-- Etapas -->
+                        <div class="glass-card p-6 rounded-3xl border border-white/10">
+                            <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">🚀 Etapas</h3>
+                            <ul id="dash-etapas" class="space-y-3 text-gray-300"></ul>
+                        </div>
+                        <!-- Matérias -->
+                        <div class="glass-card p-6 rounded-3xl border border-white/10">
+                            <h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">📚 Matérias</h3>
+                            <div id="dash-materias" class="flex flex-wrap gap-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab: Plano de Estudos -->
+                <div id="panel-plano-estudos" class="tab-panel hidden space-y-6">
+                    <div class="glass-card p-8 rounded-3xl text-center border border-white/10">
+                         <h3 class="text-2xl font-bold mb-4">Seu Cronograma Personalizado</h3>
+                         <p class="text-gray-400 mb-6">A IA criará um plano semanal baseado no seu edital.</p>
+                         <button onclick="chamarBackend('plano')" class="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg shadow-blue-900/30 hover:scale-105">
+                            Gerar Novo Plano
+                         </button>
+                    </div>
+                </div>
+
+                <!-- Tab: Treino -->
+                <div id="panel-treino" class="tab-panel hidden space-y-6">
+                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <button onclick="chamarBackend('quiz')" class="glass-card p-8 rounded-3xl text-left border border-white/10 hover:border-purple-500/50 transition-all group hover:scale-[1.02]">
+                            <span class="text-4xl mb-4 block">🧠</span>
+                            <h3 class="text-2xl font-bold text-white group-hover:text-purple-400 transition-colors">Quiz Rápido</h3>
+                            <p class="text-gray-400 mt-2">5 questões para testar seus conhecimentos agora.</p>
+                        </button>
+                        
+                        <button onclick="chamarBackend('simulado_real')" class="glass-card p-8 rounded-3xl text-left border border-white/10 hover:border-red-500/50 transition-all group hover:scale-[1.02]">
+                            <span class="text-4xl mb-4 block">🎓</span>
+                            <h3 class="text-2xl font-bold text-white group-hover:text-red-400 transition-colors">Simulado Real</h3>
+                            <p class="text-gray-400 mt-2">Experiência completa de prova com timer e correção.</p>
+                        </button>
+                     </div>
+                </div>
+
             </section>
 
             <!-- Results Section -->
@@ -413,6 +452,96 @@
         let currentQuestionIndex = 0;
         let userAnswers = {};
         let simuladoTimer = null;
+        window.currentEditalText = null;
+
+        // Auto-trigger analysis on file upload
+        document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Reset UI
+            document.getElementById('contestDashboard').classList.add('hidden');
+            document.getElementById('resultadoArea').classList.add('hidden');
+            document.getElementById('simuladoArea').classList.add('hidden');
+            
+            // Show Loading
+            const statusDiv = document.getElementById('status');
+            const statusText = document.getElementById('statusText');
+            statusDiv.classList.remove('hidden');
+            statusText.innerText = "Lendo PDF e Analisando Edital...";
+            
+            try {
+                window.currentEditalText = await extractTextFromPDF(file);
+                
+                // Call Backend for Analysis
+                statusText.innerText = "Identificando informações do concurso...";
+                await chamarBackend('analisar_edital');
+                
+            } catch (error) {
+                alert("Erro: " + error.message);
+                statusDiv.classList.add('hidden');
+                document.getElementById('fileInput').value = ''; // Reset input
+            }
+        }
+
+        window.switchTab = (tabId) => {
+            // Update Buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active', 'bg-blue-600', 'text-white', 'shadow-lg');
+                btn.classList.add('text-gray-400');
+            });
+            const activeBtn = document.getElementById('tab-' + tabId);
+            if(activeBtn) {
+                activeBtn.classList.add('active', 'bg-blue-600', 'text-white', 'shadow-lg');
+                activeBtn.classList.remove('text-gray-400');
+            }
+
+            // Show Panel
+            document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.add('hidden'));
+            const panel = document.getElementById('panel-' + tabId);
+            if(panel) panel.classList.remove('hidden');
+            
+            // Manage Result Areas visibility based on tab
+            if (tabId === 'plano-estudos') {
+                const resArea = document.getElementById('resultadoArea');
+                if (resArea.innerHTML.trim() !== "") resArea.classList.remove('hidden');
+            } else if (tabId === 'treino') {
+                // Simulado area visibility depends if it's running
+                if (document.getElementById('simuladoArea').querySelector('#questionText').innerText !== "") {
+                     document.getElementById('simuladoArea').classList.remove('hidden');
+                }
+            } else {
+                document.getElementById('resultadoArea').classList.add('hidden');
+                document.getElementById('simuladoArea').classList.add('hidden');
+            }
+        };
+
+        function renderDashboard(data) {
+            document.getElementById('dash-nome').innerText = data.nome_concurso || "Concurso Identificado";
+            document.getElementById('dash-banca').innerText = "Banca: " + (data.banca || "Não informada");
+            document.getElementById('dash-vagas').innerText = "Vagas: " + (data.vagas || "Não informado");
+            document.getElementById('dash-salario').innerText = "R$ " + (data.salario || "Ver edital");
+
+            const etapasList = document.getElementById('dash-etapas');
+            etapasList.innerHTML = '';
+            (data.etapas || []).forEach(etapa => {
+                etapasList.innerHTML += `<li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span>${etapa}</li>`;
+            });
+
+            const materiasDiv = document.getElementById('dash-materias');
+            materiasDiv.innerHTML = '';
+            (data.resumo_materias || []).forEach(mat => {
+                materiasDiv.innerHTML += `<span class="px-3 py-1 rounded-full bg-white/5 text-xs border border-white/10 hover:bg-white/10 transition-colors">${mat}</span>`;
+            });
+
+            // Show Dashboard
+            document.getElementById('contestDashboard').classList.remove('hidden');
+            document.getElementById('status').classList.add('hidden');
+            
+            // Minimize Upload Section (Optional: could add a class to make it smaller)
+        }
 
         async function extractTextFromPDF(file) {
             try {
@@ -434,26 +563,38 @@
         }
 
         async function chamarBackend(acao) {
-            const fileInput = document.getElementById('fileInput');
             const statusDiv = document.getElementById('status');
             const resultDiv = document.getElementById('resultadoArea');
             const simuladoDiv = document.getElementById('simuladoArea');
 
-            if (fileInput.files.length === 0) { 
-                fileInput.parentElement.classList.add('animate-bounce');
-                setTimeout(() => fileInput.parentElement.classList.remove('animate-bounce'), 1000);
-                alert("Por favor, arraste ou selecione um PDF primeiro!"); 
-                return; 
+            // Use cached text or check file input
+            let text = window.currentEditalText;
+            if (!text) {
+                 const fileInput = document.getElementById('fileInput');
+                 if (fileInput.files.length > 0) {
+                     statusDiv.classList.remove('hidden');
+                     document.getElementById('statusText').innerText = "Lendo PDF...";
+                     text = await extractTextFromPDF(fileInput.files[0]);
+                     window.currentEditalText = text;
+                 } else {
+                     alert("Nenhum edital carregado. Por favor, faça upload do PDF."); 
+                     return;
+                 }
             }
 
             statusDiv.classList.remove('hidden');
-            resultDiv.classList.add('hidden');
-            simuladoDiv.classList.add('hidden');
+            if(acao !== 'analisar_edital') {
+                // If generating plan/quiz, we can keep dashboard visible but show loading
+                document.getElementById('statusText').innerText = "Gerando conteúdo...";
+            }
+            
+            // Hide result areas temporarily while loading new content
+            if (acao === 'plano') resultDiv.classList.add('hidden');
+            if (acao === 'simulado_real') simuladoDiv.classList.add('hidden');
+            
             statusDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
             try {
-                const text = await extractTextFromPDF(fileInput.files[0]);
-
                 const response = await fetch('/.netlify/functions/api', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -476,11 +617,31 @@
                     throw new Error(errorMsg);
                 }
 
-                if (acao === 'simulado_real') {
+                if (acao === 'analisar_edital') {
                     const data = await response.json();
+                    renderDashboard(data);
+                } else if (acao === 'simulado_real') {
+                    const data = await response.json();
+                    
+                    // Move Simulado Area to Treino Panel
+                    const panel = document.getElementById('panel-treino');
+                    const simArea = document.getElementById('simuladoArea');
+                    if (!panel.contains(simArea)) {
+                        panel.appendChild(simArea);
+                    }
+                    
                     startSimulado(data);
+                    statusDiv.classList.add('hidden');
                 } else {
-                    // Fluxo normal (Markdown Stream)
+                    // Fluxo normal (Markdown Stream - Plano/Quiz)
+                    if (acao === 'plano') {
+                        // Move result div to plan tab if needed, or just ensure it's visible
+                        const panel = document.getElementById('panel-plano-estudos');
+                        if (!panel.contains(resultDiv)) {
+                            panel.appendChild(resultDiv);
+                        }
+                    }
+                    
                     resultDiv.innerHTML = '<div class="prose prose-invert prose-lg max-w-none prose-headings:text-blue-300 prose-a:text-blue-400 prose-strong:text-white"></div>';
                     const contentDiv = resultDiv.querySelector('div');
                     resultDiv.classList.remove('hidden');
@@ -498,12 +659,12 @@
                     }
                     
                     finishAction(text, acao, markdown);
+                    statusDiv.classList.add('hidden');
                     resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
 
             } catch (error) {
                 alert("Ops! " + error.message);
-            } finally {
                 statusDiv.classList.add('hidden');
             }
         }
