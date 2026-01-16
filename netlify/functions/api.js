@@ -1,6 +1,6 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+import { GoogleGenAI } from "@google/genai";
 
-exports.handler = async (event, context) => {
+export const handler = async (event, context) => {
     const apiKey = process.env.GEMINI_API_KEY;
 
     if (!apiKey) {
@@ -62,12 +62,13 @@ b) ...
         };
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-001" });
-
     try {
-        const result = await model.generateContent(prompt);
-        const text = result.response.text();
+        const ai = new GoogleGenAI({ apiKey });
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt
+        });
+        const text = response.text();
 
         return {
             statusCode: 200,
@@ -82,4 +83,3 @@ b) ...
         };
     }
 };
-
