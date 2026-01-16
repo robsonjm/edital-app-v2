@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export default async (request, context) => {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -89,28 +89,25 @@ ${texto_edital.slice(0, 30000)}
     }
 
     try {
-        const client = new GoogleGenAI({ apiKey });
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ 
+            model: "gemini-1.5-flash",
+            generationConfig: isJsonMode ? { responseMimeType: "application/json" } : {}
+        });
         
-        // Se for JSON (Simulado), usa generateContent normal (não-stream) para garantir JSON válido
+        // Se for JSON (Simulado), usa generateContent normal
         if (isJsonMode) {
-            const result = await client.models.generateContent({
-                model: "gemini-1.5-flash",
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                config: {
-                    responseMimeType: "application/json"
-                }
-            });
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const text = response.text();
             
-            return new Response(result.response.text(), {
+            return new Response(text, {
                 headers: { "Content-Type": "application/json" }
             });
 
         } else {
             // Se for Texto/Markdown (Plano, Quiz simples), usa Stream
-            const result = await client.models.generateContentStream({
-                model: "gemini-1.5-flash",
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-            });
+            const result = await model.generateContentStream(prompt);
 
             const stream = new ReadableStream({
                 async start(controller) {
@@ -137,6 +134,7 @@ ${texto_edital.slice(0, 30000)}
         }
 
     } catch (e) {
+        console.error("Erro na API:", e);
         return new Response(JSON.stringify({ error: String(e.message || e) }), {
             status: 500,
             headers: { "Content-Type": "application/json" }
