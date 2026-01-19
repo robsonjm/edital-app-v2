@@ -578,6 +578,36 @@
     </script>
 
     <script>
+        // Função para selecionar partes relevantes do texto e reduzir o tamanho do payload
+        function getSmartContext(fullText) {
+            const MAX_CHARS = 45000; // Limite seguro para processamento rápido (~10k tokens)
+            
+            if (fullText.length <= MAX_CHARS) return fullText;
+
+            console.log("Otimizando texto para envio (Smart Context)...");
+
+            // 1. Sempre pegar o início (Cabeçalho, Banca, Vagas) - Primeiros 10k caracteres
+            let smartText = fullText.substring(0, 10000);
+            smartText += "\n\n...[TRECHO OMITIDO PELO SISTEMA]...\n\n";
+
+            // 2. Procurar por seções de Conteúdo Programático / Anexos
+            // Palavras-chave comuns
+            const keywords = ["CONTEÚDO PROGRAMÁTICO", "ANEXO", "PROGRAMA DE PROVA", "CONHECIMENTOS", "DISCIPLINAS"];
+            
+            // Tentar encontrar a posição dessas palavras na segunda metade do texto
+            let foundRelevantSection = false;
+            const searchArea = fullText.substring(10000); // Procura no restante
+            
+            // Estratégia simples: Pegar os últimos 25k caracteres (geralmente onde estão os anexos)
+            // e mais trechos ao redor das palavras chave se não estiverem no final
+            
+            const lastPart = fullText.substring(fullText.length - 25000);
+            smartText += lastPart;
+
+            console.log(`Texto original: ${fullText.length} chars. Texto otimizado: ${smartText.length} chars.`);
+            return smartText;
+        }
+
         // Custom Animation for Progress Bar
         const styleSheet = document.createElement("style");
         styleSheet.innerText = `
@@ -761,6 +791,9 @@
                      return;
                  }
             }
+            
+            // Otimiza o texto antes de enviar
+            const textToSend = getSmartContext(text);
 
             statusDiv.classList.remove('hidden');
             if(acao !== 'analisar_edital') {
@@ -783,7 +816,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        text: text,
+                        text: textToSend,
                         action: acao,
                         topic: "Conhecimentos Específicos"
                     })

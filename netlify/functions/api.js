@@ -181,6 +181,9 @@ ${texto_edital}
 
         const stream = new ReadableStream({
             async start(controller) {
+                // Envia um espaço em branco imediatamente para manter a conexão ativa (evita Inactivity Timeout)
+                controller.enqueue(new TextEncoder().encode(" "));
+                
                 try {
                     for await (const chunk of result.stream) {
                         // Novo SDK: verifica se chunk.text é propriedade ou função
