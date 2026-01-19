@@ -973,8 +973,18 @@
                     jsonStr = jsonStr.trim();
 
                     // --- Robust JSON Extraction ---
+                    
+                    // 1. Verificação de Erro Explícito do Backend (que pode vir anexado ao final do stream)
+                    // Ex: ...texto... {"error": "..."}
+                    // Procuramos por qualquer ocorrência de "error": "..." no JSON
+                    const errorMatch = jsonStr.match(/"error"\s*:\s*"(.*?)"/);
+                    if (errorMatch) {
+                        console.warn("Erro detectado na resposta da IA:", errorMatch[1]);
+                        throw new Error(errorMatch[1]);
+                    }
+
+                    // 2. Extração do Bloco JSON
                     // Às vezes a IA coloca texto antes ou depois do bloco de código.
-                    // Vamos tentar extrair apenas o conteúdo entre a primeira { e a última }
                     const firstBrace = jsonStr.indexOf('{');
                     const lastBrace = jsonStr.lastIndexOf('}');
 
@@ -994,7 +1004,7 @@
                         data = JSON.parse(jsonStr);
                     } catch (e) {
                         console.error("JSON Parse Error:", e);
-                        console.error("Invalid JSON String:", jsonStr);
+                        console.error("Invalid JSON String (snippet):", jsonStr.substring(0, 500) + "...");
                         
                         // Fallback: Tentar corrigir JSON quebrado (comum em streams interrompidas)
                         // Ex: falta fechar aspas ou chaves no final

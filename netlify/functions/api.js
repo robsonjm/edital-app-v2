@@ -94,19 +94,20 @@ b) ...
         isJsonMode = true;
         prompt = `
 Analise o texto do edital e extraia os METADADOS básicos.
-Não se preocupe com o conteúdo programático agora.
-Foque em: Nome, Banca, Datas, Vagas, Salário, Etapas.
+Responda EXCLUSIVAMENTE com o objeto JSON abaixo preenchido.
+NÃO use blocos de código markdown (\\\`\\\`\\\`json). Apenas o JSON cru.
 
-Retorne APENAS um JSON válido:
 {
   "nome_concurso": "Nome do Órgão / Cargo",
   "banca": "Nome da Banca (ou 'Não identificada')",
   "data_prova": "Data da prova (ou 'A definir')",
   "salario": "Valor do salário/remuneração",
-  "escolaridade": "Nível de escolaridade",
+  "escolaridade": "Nível de escolaridade exigido",
   "vagas": "Número de vagas",
   "etapas": ["Prova Objetiva", "Títulos", "etc"]
 }
+
+Se não encontrar uma informação, use null.
 
 Texto:
 ${texto_edital}
@@ -115,9 +116,8 @@ ${texto_edital}
         isJsonMode = true;
         prompt = `
 Analise o texto (focando nos ANEXOS/CONTEÚDO PROGRAMÁTICO) e extraia as MATÉRIAS e TÓPICOS.
-Ignore cabeçalhos e regras gerais. Foque no que cai na prova.
+Responda EXCLUSIVAMENTE com o objeto JSON. Sem markdown.
 
-Retorne APENAS um JSON válido:
 {
   "resumo_materias": ["Português", "Matemática", "Direito X"],
   "conteudo_programatico": {
