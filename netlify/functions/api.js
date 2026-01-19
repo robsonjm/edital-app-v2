@@ -93,30 +93,36 @@ ${texto_edital}
     } else if (action === "simulado_real") {
         isJsonMode = true;
         prompt = `
-Analise o texto do edital fornecido e extraia informações sobre a estrutura da prova (tempo, número de questões, matérias).
-Com base nisso, crie um SIMULADO REALÍSTICO.
-Se o edital não especificar número de questões, gere 10 questões seguindo a proporção de matérias.
-Retorne APENAS um JSON válido com esta estrutura, sem markdown:
+Analise o texto do edital fornecido e extraia informações sobre a estrutura da prova (tempo, número de questões, matérias, estilo da banca).
+Com base nisso, crie um SIMULADO GAMIFICADO E REALÍSTICO.
+O objetivo é que o usuário sinta que está fazendo a prova, mas de forma engajadora.
+
+Gere 10 questões de múltipla escolha (A, B, C, D, E) seguindo a proporção de matérias do edital.
+Cada questão deve ter um nível de dificuldade variado (Fácil, Médio, Difícil).
+
+Retorne APENAS um JSON válido com esta estrutura:
 {
   "exam_config": {
-    "title": "Nome do Concurso/Cargo",
-    "duration_minutes": 240,
-    "total_questions": 10
+    "title": "Simulado - [Nome do Cargo]",
+    "duration_minutes": 120,
+    "total_questions": 10,
+    "difficulty_level": "Misto"
   },
   "questions": [
     {
       "id": 1,
-      "subject": "Português",
-      "question": "Texto da pergunta...",
-      "options": ["Opção A", "Opção B", "Opção C", "Opção D", "Opção E"],
-      "correct_option_index": 2,
-      "explanation": "Explicação detalhada..."
+      "subject": "Nome da Matéria",
+      "difficulty": "Médio",
+      "question": "Enunciado da questão...",
+      "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D", "Alternativa E"],
+      "correct_answer": 0, // Índice da resposta correta (0-4)
+      "explanation": "Explicação detalhada do porquê a alternativa está correta e as outras incorretas."
     }
   ]
 }
 
 Texto do Edital:
-${texto_edital.slice(0, 30000)}
+${texto_edital}
 `;
     } else {
         return new Response(JSON.stringify({ error: "Ação inválida" }), {
