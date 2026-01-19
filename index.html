@@ -663,6 +663,21 @@
             const file = event.target.files[0];
             if (!file) return;
 
+            // Update UI to show selected file
+            const dropZone = document.querySelector('.group\\/input');
+            const dropZoneBorder = dropZone.querySelector('.border-2');
+            const dropZoneText = dropZone.querySelector('.font-semibold');
+            const dropZoneSubText = dropZone.querySelector('.text-sm');
+            const dropZoneIcon = dropZone.querySelector('.w-16');
+
+            if (dropZoneBorder) {
+                dropZoneBorder.classList.remove('border-gray-600', 'border-dashed');
+                dropZoneBorder.classList.add('border-blue-500', 'bg-blue-500/10', 'border-solid');
+            }
+            if (dropZoneText) dropZoneText.innerText = file.name;
+            if (dropZoneSubText) dropZoneSubText.innerText = (file.size / 1024 / 1024).toFixed(2) + " MB";
+            if (dropZoneIcon) dropZoneIcon.innerHTML = '<span class="text-3xl">📄</span>';
+
             // Reset UI
             document.getElementById('contestDashboard').classList.add('hidden');
             document.getElementById('resultadoArea').classList.add('hidden');
@@ -849,10 +864,16 @@
             }
         }
 
-        async function chamarBackend(acao) {
+        async function chamarBackend(acao, retryCount = 0) {
             const statusDiv = document.getElementById('status');
             const resultDiv = document.getElementById('resultadoArea');
             const simuladoDiv = document.getElementById('simuladoArea');
+            const statusText = document.getElementById('statusText');
+
+            if (retryCount > 0) {
+                console.warn(`Tentativa de reconexão ${retryCount}/2 para ${acao}...`);
+                statusText.innerText = statusText.innerText.split(' (')[0] + ` (Tentativa ${retryCount + 1}/3)`;
+            }
 
             // Use cached text or check file input
             let text = window.currentEditalText;
@@ -1030,8 +1051,22 @@
                 }
 
             } catch (error) {
+                console.error(`Erro na ação ${acao}:`, error);
+                
+                // Retry Logic
+                if (retryCount < 2) {
+                    const delay = 2000 * (retryCount + 1); // 2s, 4s
+                    console.log(`Tentando novamente em ${delay/1000}s...`);
+                    await new Promise(r => setTimeout(r, delay));
+                    return chamarBackend(acao, retryCount + 1);
+                }
+
                 alert("Ops! " + error.message);
                 statusDiv.classList.add('hidden');
+                
+                // Remove placeholder if it exists (cleanup)
+                const placeholder = document.getElementById('loading-conteudos-placeholder');
+                if(placeholder) placeholder.remove();
             }
         }
 
