@@ -63,8 +63,15 @@
                     })
                 }
             ]
-        }
+        }<script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        // Supress PDF.js Font warnings
+        const origConsoleWarn = console.warn;
+        console.warn = function(...args) {
+             if(args[0] && typeof args[0] === 'string' && args[0].includes('Warning: TT:')) return;
+             origConsoleWarn.apply(console, args);
+        };
     </script>
     <script type="importmap">
       {
@@ -692,6 +699,9 @@
                     if (window.saveEditalToFirestore) {
                         window.saveEditalToFirestore(window.currentEditalData, window.currentEditalText);
                     }
+                    
+                    // Show Success Feedback
+                    finishAction(null, 'analisar_edital', null);
                 }
                 
                 statusDiv.classList.add('hidden');
