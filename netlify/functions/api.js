@@ -172,31 +172,22 @@ ${texto_edital}
         };
         
         // Força Stream para TODAS as requisições para evitar Timeout do Netlify
-        // O frontend irá acumular o JSON se necessário
-        let result;
-        try {
-            console.log(`Iniciando geração com modelo models/gemini-pro-latest...`);
-            result = await ai.models.generateContentStream({
-                model: "models/gemini-pro-latest",
-                contents: prompt,
-                config: requestConfig
-            });
-        } catch (e) {
-            console.error("Erro na chamada da AI:", e);
-            return new Response(JSON.stringify({ 
-                error: "Erro na IA (Google): " + (e.message || String(e)) 
-            }), {
-                status: 500,
-                headers: { "Content-Type": "application/json" }
-            });
-        }
-
         const stream = new ReadableStream({
             async start(controller) {
-                // Envia um espaço em branco imediatamente para manter a conexão ativa (evita Inactivity Timeout)
+                // 1. Envia um Keep-Alive IMEDIATO para o browser saber que a conexão foi aceita
+                // Isso evita o timeout de "Response Headers"
                 controller.enqueue(new TextEncoder().encode(" "));
                 
                 try {
+                    console.log(`Iniciando geração com modelo models/gemini-pro-latest...`);
+                    
+                    // 2. A chamada da IA acontece DENTRO da stream, não bloqueando a resposta inicial
+                    const result = await ai.models.generateContentStream({
+                        model: "models/gemini-pro-latest",
+                        contents: prompt,
+                        config: requestConfig
+                    });
+
                     for await (const chunk of result.stream) {
                         // Novo SDK: verifica se chunk.text é propriedade ou função
                         let chunkText = chunk.text;
@@ -211,7 +202,12 @@ ${texto_edital}
                     controller.close();
                 } catch (err) {
                     console.error("Stream error:", err);
-                    controller.error(err);
+                    // Se der erro no meio da stream, enviamos um JSON de erro que o frontend pode tentar detectar
+                    // Ou apenas fechamos com erro, mas enviar texto ajuda no debug
+                    const errorMsg = JSON.stringify({ error: "Erro durante geração: " + (err.message || String(err)) });
+                    // Tenta enviar erro limpo se possível, mas provavelmente vai quebrar o JSON do frontend (o que é esperado nesse caso)
+                    controller.enqueue(new TextEncoder().encode("\n\n" + errorMsg));
+                    controller.close();
                 }
             },
         });
