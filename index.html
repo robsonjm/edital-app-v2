@@ -589,7 +589,8 @@
     <script>
         // Função para selecionar partes relevantes do texto e reduzir o tamanho do payload
         function getSmartContext(fullText, type = 'general') {
-            const MAX_CHARS = 45000; 
+            // Aumentamos o limite para 100k caracteres (aprox 25k tokens), seguro para Gemini Pro
+            const MAX_CHARS = 100000; 
             
             if (fullText.length <= MAX_CHARS) return fullText;
 
@@ -597,36 +598,95 @@
 
             if (type === 'metadados') {
                 // Para metadados, o início do edital é o mais importante (Banca, Vagas, Datas)
-                // Geralmente nas primeiras 20 páginas.
-                return fullText.substring(0, 20000) + "\n\n...[RESTANTE OMITIDO]...";
+                return fullText.substring(0, 30000) + "\n\n...[RESTANTE OMITIDO]...";
             }
 
-            if (type === 'materias') {
-                // Para matérias, precisamos do CONTEÚDO PROGRAMÁTICO (quase sempre no final/anexos)
-                // E um pouco do início para contexto (nome do cargo)
-                let smartText = fullText.substring(0, 2000); // Contexto básico
-                smartText += "\n\n...[MEIO OMITIDO]...\n\n";
-                
-                // Pega os últimos 35k caracteres (aumentado para garantir)
-                const lastPart = fullText.substring(fullText.length - 35000);
-                smartText += lastPart;
-                
-                // Se o texto total ainda for pequeno, podemos tentar buscar no meio
-                // Mas geralmente 35k do final cobre os anexos.
-                return smartText;
+            // Para Matérias, Planos e Simulados, precisamos encontrar o CONTEÚDO PROGRAMÁTICO
+            // Estratégia: Busca Inteligente por Palavras-Chave em TODO o texto
+            
+            // 1. Sempre manter o cabeçalho para contexto (Cargo, Banca, etc)
+            let context = fullText.substring(0, 5000);
+            context += "\n...[INICIO OMITIDO]...\n";
+
+            // 2. Palavras-chave que indicam seções de conteúdo
+            const keywords = [
+                "CONTEÚDO PROGRAMÁTICO", 
+                "PROGRAMA DE PROVA", 
+                "PROGRAMAS DAS PROVAS", 
+                "ANEXO", 
+                "CONHECIMENTOS BÁSICOS", 
+                "CONHECIMENTOS ESPECÍFICOS", 
+                "LÍNGUA PORTUGUESA", 
+                "RACIOCÍNIO LÓGICO",
+                "NOÇÕES DE INFORMÁTICA",
+                "CRONOGRAMA"
+            ];
+            
+            // 3. Encontrar ocorrências
+            let ranges = [];
+            const searchRegion = fullText.toUpperCase();
+            
+            keywords.forEach(kw => {
+                let pos = searchRegion.indexOf(kw);
+                while (pos !== -1) {
+                    // Pega um bloco grande ao redor da palavra-chave (-2k a +20k)
+                    let start = Math.max(0, pos - 2000);
+                    let end = Math.min(fullText.length, pos + 20000);
+                    ranges.push({start, end});
+                    
+                    // Busca próxima ocorrência
+                    pos = searchRegion.indexOf(kw, pos + 5000); // Pula 5k pra não pegar mtas repetidas próximas
+                }
+            });
+
+            // Se não achou nada, usa estratégia antiga (Início + Final)
+            if (ranges.length === 0) {
+                 console.warn("Nenhuma palavra-chave de conteúdo encontrada. Usando estratégia fallback (Final do arquivo).");
+                 return context + fullText.substring(fullText.length - 50000);
             }
 
-            // Fallback (General / Quiz / Plano)
-            // 1. Sempre pegar o início (Cabeçalho, Banca, Vagas) - Primeiros 10k caracteres
-            let smartText = fullText.substring(0, 10000);
-            smartText += "\n\n...[TRECHO OMITIDO PELO SISTEMA]...\n\n";
+            // 4. Mesclar intervalos sobrepostos
+            ranges.sort((a, b) => a.start - b.start);
+            let merged = [];
+            if(ranges.length > 0) {
+                let current = ranges[0];
+                for(let i=1; i < ranges.length; i++) {
+                    if (ranges[i].start < current.end) {
+                        current.end = Math.max(current.end, ranges[i].end);
+                    } else {
+                        merged.push(current);
+                        current = ranges[i];
+                    }
+                }
+                merged.push(current);
+            }
 
-            // 2. Procurar por seções de Conteúdo Programático / Anexos
-            const lastPart = fullText.substring(fullText.length - 25000);
-            smartText += lastPart;
+            // 5. Construir o texto final respeitando o limite
+            let currentLength = context.length;
+            
+            for (let r of merged) {
+                if (currentLength >= MAX_CHARS) break;
+                
+                let chunk = fullText.substring(r.start, r.end);
+                
+                // Trunca se passar do limite
+                if (currentLength + chunk.length > MAX_CHARS) {
+                     chunk = chunk.substring(0, MAX_CHARS - currentLength);
+                }
+                
+                context += `\n...[Trecho Relevante Detectado ${r.start}-${r.end}]...\n` + chunk;
+                currentLength += chunk.length;
+            }
+            
+            // Adiciona o finalzinho do arquivo também, pois muitas vezes anexos estão lá
+            if (currentLength < MAX_CHARS) {
+                 const remaining = MAX_CHARS - currentLength;
+                 const lastPart = fullText.substring(fullText.length - remaining);
+                 context += "\n...[FINAL DO ARQUIVO]...\n" + lastPart;
+            }
 
-            console.log(`Texto original: ${fullText.length} chars. Texto otimizado: ${smartText.length} chars.`);
-            return smartText;
+            console.log(`Texto original: ${fullText.length} chars. Texto Otimizado (SmartContext): ${context.length} chars.`);
+            return context;
         }
 
         // Custom Animation for Progress Bar

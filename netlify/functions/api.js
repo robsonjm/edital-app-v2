@@ -115,8 +115,10 @@ ${texto_edital}
     } else if (action === "identificar_materias") {
         isJsonMode = true;
         prompt = `
-Analise o texto e liste APENAS os nomes das matérias/disciplinas do conteúdo programático.
-Ignore tópicos específicos agora, queremos apenas os títulos das matérias (Ex: Português, Matemática, Direito Constitucional).
+Analise o texto fornecido (que pode conter trechos desconexos de várias partes do edital) e identifique as MATÉRIAS/DISCIPLINAS do Conteúdo Programático.
+Procure por seções como "Conteúdo Programático", "Anexo I", "Conhecimentos Básicos", "Conhecimentos Específicos".
+Ignore tópicos específicos (ex: 'Crase', 'Regra de três'), queremos apenas os TÍTULOS das matérias (Ex: Língua Portuguesa, Matemática, Direito Constitucional, Conhecimentos Específicos).
+Se houver subdivisões como "Conhecimentos Básicos" e "Específicos", liste as matérias dentro delas.
 Responda EXCLUSIVAMENTE com o objeto JSON. Sem markdown.
 
 {
@@ -131,6 +133,7 @@ ${texto_edital}
         const materiaAlvo = body.materia || "Geral";
         prompt = `
 Analise o texto e extraia SOMENTE os tópicos da matéria: "${materiaAlvo}".
+O texto pode conter fragmentos de outras partes, foque apenas onde fala de "${materiaAlvo}".
 Copie os tópicos exatamente como estão no edital.
 Responda EXCLUSIVAMENTE com o objeto JSON. Sem markdown.
 
