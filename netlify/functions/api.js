@@ -138,7 +138,12 @@ ${texto_edital.slice(0, 30000)}
             });
             
             // Novo SDK: response.text é uma propriedade, não função
-            const responseText = result.text; 
+            let responseText = result.text;
+            
+            // Limpeza robusta de Markdown (remove ```json e ```)
+            if (responseText) {
+                responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
+            }
             
             return new Response(responseText, {
                 headers: { "Content-Type": "application/json" }
