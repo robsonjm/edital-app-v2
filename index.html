@@ -579,28 +579,40 @@
 
     <script>
         // Função para selecionar partes relevantes do texto e reduzir o tamanho do payload
-        function getSmartContext(fullText) {
-            const MAX_CHARS = 45000; // Limite seguro para processamento rápido (~10k tokens)
+        function getSmartContext(fullText, type = 'general') {
+            const MAX_CHARS = 45000; 
             
             if (fullText.length <= MAX_CHARS) return fullText;
 
-            console.log("Otimizando texto para envio (Smart Context)...");
+            console.log(`Otimizando texto para envio (${type})...`);
 
+            if (type === 'metadados') {
+                // Para metadados, o início do edital é o mais importante (Banca, Vagas, Datas)
+                // Geralmente nas primeiras 20 páginas.
+                return fullText.substring(0, 20000) + "\n\n...[RESTANTE OMITIDO]...";
+            }
+
+            if (type === 'materias') {
+                // Para matérias, precisamos do CONTEÚDO PROGRAMÁTICO (quase sempre no final/anexos)
+                // E um pouco do início para contexto (nome do cargo)
+                let smartText = fullText.substring(0, 2000); // Contexto básico
+                smartText += "\n\n...[MEIO OMITIDO]...\n\n";
+                
+                // Pega os últimos 35k caracteres (aumentado para garantir)
+                const lastPart = fullText.substring(fullText.length - 35000);
+                smartText += lastPart;
+                
+                // Se o texto total ainda for pequeno, podemos tentar buscar no meio
+                // Mas geralmente 35k do final cobre os anexos.
+                return smartText;
+            }
+
+            // Fallback (General / Quiz / Plano)
             // 1. Sempre pegar o início (Cabeçalho, Banca, Vagas) - Primeiros 10k caracteres
             let smartText = fullText.substring(0, 10000);
             smartText += "\n\n...[TRECHO OMITIDO PELO SISTEMA]...\n\n";
 
             // 2. Procurar por seções de Conteúdo Programático / Anexos
-            // Palavras-chave comuns
-            const keywords = ["CONTEÚDO PROGRAMÁTICO", "ANEXO", "PROGRAMA DE PROVA", "CONHECIMENTOS", "DISCIPLINAS"];
-            
-            // Tentar encontrar a posição dessas palavras na segunda metade do texto
-            let foundRelevantSection = false;
-            const searchArea = fullText.substring(10000); // Procura no restante
-            
-            // Estratégia simples: Pegar os últimos 25k caracteres (geralmente onde estão os anexos)
-            // e mais trechos ao redor das palavras chave se não estiverem no final
-            
             const lastPart = fullText.substring(fullText.length - 25000);
             smartText += lastPart;
 
@@ -635,6 +647,8 @@
         let simuladoTimer = null;
         window.currentEditalText = null;
 
+        window.currentEditalData = {};
+
         // Auto-trigger analysis on file upload
         document.getElementById('fileInput').addEventListener('change', handleFileUpload);
 
@@ -646,19 +660,41 @@
             document.getElementById('contestDashboard').classList.add('hidden');
             document.getElementById('resultadoArea').classList.add('hidden');
             document.getElementById('simuladoArea').classList.add('hidden');
+            window.currentEditalData = {}; // Reset Global Data
             
             // Show Loading
             const statusDiv = document.getElementById('status');
             const statusText = document.getElementById('statusText');
             statusDiv.classList.remove('hidden');
-            statusText.innerText = "Lendo PDF e Analisando Edital...";
+            statusText.innerText = "Lendo PDF...";
             
             try {
                 window.currentEditalText = await extractTextFromPDF(file);
                 
-                // Call Backend for Analysis
-                statusText.innerText = "Identificando informações do concurso...";
-                await chamarBackend('analisar_edital');
+                // --- FASE 1: Metadados (Rápido) ---
+                statusText.innerText = "1/2: Identificando Banca e Vagas...";
+                const metaData = await chamarBackend('analisar_metadados');
+                
+                if (metaData) {
+                    window.currentEditalData = { ...window.currentEditalData, ...metaData };
+                    renderDashboard(window.currentEditalData);
+                }
+
+                // --- FASE 2: Conteúdo Programático (Pesado) ---
+                statusText.innerText = "2/2: Detalhando Matérias e Tópicos...";
+                const contentData = await chamarBackend('analisar_materias');
+                
+                if (contentData) {
+                    window.currentEditalData = { ...window.currentEditalData, ...contentData };
+                    renderDashboard(window.currentEditalData);
+                    
+                    // Salvar no Firestore apenas quando tiver tudo
+                    if (window.saveEditalToFirestore) {
+                        window.saveEditalToFirestore(window.currentEditalData, window.currentEditalText);
+                    }
+                }
+                
+                statusDiv.classList.add('hidden');
                 
             } catch (error) {
                 alert("Erro: " + error.message);
@@ -700,30 +736,39 @@
         };
 
         function renderDashboard(data) {
-            document.getElementById('dash-nome').innerText = data.nome_concurso || "Concurso Identificado";
-            document.getElementById('dash-banca').innerText = "Banca: " + (data.banca || "Não informada");
-            document.getElementById('dash-vagas').innerText = "Vagas: " + (data.vagas || "Não informado");
-            document.getElementById('dash-salario').innerText = "R$ " + (data.salario || "Ver edital");
+            if(data.nome_concurso) document.getElementById('dash-nome').innerText = data.nome_concurso;
+            if(data.banca) document.getElementById('dash-banca').innerText = "Banca: " + data.banca;
+            if(data.vagas) document.getElementById('dash-vagas').innerText = "Vagas: " + data.vagas;
+            if(data.salario) document.getElementById('dash-salario').innerText = "R$ " + data.salario;
 
-            const etapasList = document.getElementById('dash-etapas');
-            etapasList.innerHTML = '';
-            (data.etapas || []).forEach(etapa => {
-                etapasList.innerHTML += `<li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span>${etapa}</li>`;
-            });
+            if (data.etapas) {
+                const etapasList = document.getElementById('dash-etapas');
+                etapasList.innerHTML = '';
+                (data.etapas || []).forEach(etapa => {
+                    etapasList.innerHTML += `<li class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-blue-500"></span>${etapa}</li>`;
+                });
+            }
 
-            const materiasDiv = document.getElementById('dash-materias');
-            materiasDiv.innerHTML = '';
-            (data.resumo_materias || []).forEach(mat => {
-                materiasDiv.innerHTML += `<span class="px-3 py-1 rounded-full bg-white/5 text-xs border border-white/10 hover:bg-white/10 transition-colors">${mat}</span>`;
-            });
+            if (data.resumo_materias) {
+                const materiasDiv = document.getElementById('dash-materias');
+                materiasDiv.innerHTML = '';
+                (data.resumo_materias || []).forEach(mat => {
+                    materiasDiv.innerHTML += `<span class="px-3 py-1 rounded-full bg-white/5 text-xs border border-white/10 hover:bg-white/10 transition-colors">${mat}</span>`;
+                });
+            }
 
             // Show Dashboard
             document.getElementById('contestDashboard').classList.remove('hidden');
-            document.getElementById('status').classList.add('hidden');
+            // Status is handled by handleFileUpload now
 
             // Render Conteúdo Programático if available
             if (data.conteudo_programatico) {
+                // Remove existing if any
+                const existing = document.getElementById('dash-conteudos');
+                if (existing) existing.remove();
+
                 const conteudosDiv = document.createElement('div');
+                conteudosDiv.id = 'dash-conteudos';
                 conteudosDiv.className = "glass-card p-6 rounded-3xl border border-white/10 mt-6";
                 conteudosDiv.innerHTML = `<h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">📑 Conteúdo Detalhado</h3>`;
                 
@@ -741,8 +786,6 @@
                 conteudosDiv.appendChild(list);
                 document.getElementById('panel-visao-geral').appendChild(conteudosDiv);
             }
-            
-            // Minimize Upload Section (Optional: could add a class to make it smaller)
         }
 
         async function extractTextFromPDF(file) {
@@ -793,10 +836,13 @@
             }
             
             // Otimiza o texto antes de enviar
-            const textToSend = getSmartContext(text);
+            let type = 'general';
+            if (acao === 'analisar_metadados') type = 'metadados';
+            if (acao === 'analisar_materias') type = 'materias';
+            const textToSend = getSmartContext(text, type);
 
             statusDiv.classList.remove('hidden');
-            if(acao !== 'analisar_edital') {
+            if(!acao.startsWith('analisar_')) {
                 // If generating plan/quiz, we can keep dashboard visible but show loading
                 document.getElementById('statusText').innerText = "Gerando conteúdo...";
             }
@@ -834,7 +880,7 @@
                     throw new Error(errorMsg);
                 }
 
-                if (acao === 'analisar_edital' || acao === 'simulado_real') {
+                if (acao.startsWith('analisar_') || acao === 'simulado_real') {
                     // Accumulate stream for JSON parsing
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
@@ -859,12 +905,9 @@
                     
                     const data = JSON.parse(jsonStr.trim());
 
-                    if (acao === 'analisar_edital') {
-                        renderDashboard(data);
-                        // Save to Firestore
-                        if (window.saveEditalToFirestore) {
-                            window.saveEditalToFirestore(data, text);
-                        }
+                    if (acao.startsWith('analisar_')) {
+                        // Retorna os dados para serem processados pelo caller (handleFileUpload)
+                        return data;
                     } else {
                          // Move Simulado Area to Treino Panel
                         const panel = document.getElementById('panel-treino');

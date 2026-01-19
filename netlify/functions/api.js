@@ -90,30 +90,43 @@ b) ...
 **Resposta Correta:** X
 **Explicação:** ...
 `;
-    } else if (action === "analisar_edital") {
+    } else if (action === "analisar_metadados") {
         isJsonMode = true;
         prompt = `
-Analise o texto do edital fornecido e extraia as informações principais para criar um "Perfil do Concurso".
-ATENÇÃO: Procure minuciosamente por ANEXOS ou seções de CONTEÚDO PROGRAMÁTICO (syllabus) que detalham o que cairá na prova.
-Desmembre os tópicos de cada matéria para termos uma visão detalhada do que estudar.
+Analise o texto do edital e extraia os METADADOS básicos.
+Não se preocupe com o conteúdo programático agora.
+Foque em: Nome, Banca, Datas, Vagas, Salário, Etapas.
 
-Retorne APENAS um JSON válido com a seguinte estrutura:
+Retorne APENAS um JSON válido:
 {
   "nome_concurso": "Nome do Órgão / Cargo",
   "banca": "Nome da Banca (ou 'Não identificada')",
   "data_prova": "Data da prova (ou 'A definir')",
-  "salario": "Valor do salário/remuneração (ou 'Ver edital')",
-  "escolaridade": "Nível de escolaridade exigido",
-  "vagas": "Número de vagas (ou 'CR')",
-  "resumo_materias": ["Matéria 1", "Matéria 2", "Matéria 3", "etc"],
-  "conteudo_programatico": {
-      "Nome da Matéria 1": ["Tópico 1", "Tópico 2", "Detalhe do Anexo..."],
-      "Nome da Matéria 2": ["Tópico A", "Tópico B"]
-  },
-  "etapas": ["Prova Objetiva", "Redação", "Títulos", "etc"]
+  "salario": "Valor do salário/remuneração",
+  "escolaridade": "Nível de escolaridade",
+  "vagas": "Número de vagas",
+  "etapas": ["Prova Objetiva", "Títulos", "etc"]
 }
 
-Texto do Edital:
+Texto:
+${texto_edital}
+`;
+    } else if (action === "analisar_materias") {
+        isJsonMode = true;
+        prompt = `
+Analise o texto (focando nos ANEXOS/CONTEÚDO PROGRAMÁTICO) e extraia as MATÉRIAS e TÓPICOS.
+Ignore cabeçalhos e regras gerais. Foque no que cai na prova.
+
+Retorne APENAS um JSON válido:
+{
+  "resumo_materias": ["Português", "Matemática", "Direito X"],
+  "conteudo_programatico": {
+      "Matéria 1": ["Tópico 1", "Tópico 2"],
+      "Matéria 2": ["Tópico A", "Tópico B"]
+  }
+}
+
+Texto:
 ${texto_edital}
 `;
     } else if (action === "simulado_real") {
