@@ -112,6 +112,36 @@ Se não encontrar uma informação, use null.
 Texto:
 ${texto_edital}
 `;
+    } else if (action === "identificar_materias") {
+        isJsonMode = true;
+        prompt = `
+Analise o texto e liste APENAS os nomes das matérias/disciplinas do conteúdo programático.
+Ignore tópicos específicos agora, queremos apenas os títulos das matérias (Ex: Português, Matemática, Direito Constitucional).
+Responda EXCLUSIVAMENTE com o objeto JSON. Sem markdown.
+
+{
+  "materias": ["Matéria 1", "Matéria 2"]
+}
+
+Texto:
+${texto_edital}
+`;
+    } else if (action === "analisar_topicos_materia") {
+        isJsonMode = true;
+        const materiaAlvo = body.materia || "Geral";
+        prompt = `
+Analise o texto e extraia SOMENTE os tópicos da matéria: "${materiaAlvo}".
+Copie os tópicos exatamente como estão no edital.
+Responda EXCLUSIVAMENTE com o objeto JSON. Sem markdown.
+
+{
+  "materia": "${materiaAlvo}",
+  "topicos": ["Tópico 1", "Tópico 2", "Tópico 3"]
+}
+
+Texto:
+${texto_edital}
+`;
     } else if (action === "analisar_materias") {
         isJsonMode = true;
         prompt = `

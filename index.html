@@ -719,22 +719,49 @@
                                 <div class="h-4 bg-gray-800 rounded w-5/6"></div>
                                 <div class="h-4 bg-gray-800 rounded w-1/2"></div>
                             </div>
-                            <p class="text-center text-blue-300 mt-6 text-sm font-semibold">🔍 IA lendo anexos e extraindo matérias...</p>
+                            <p class="text-center text-blue-300 mt-6 text-sm font-semibold">🔍 IA lendo anexos e identificando matérias...</p>
                         </div>
                     `);
                 }
 
-                // --- FASE 2: Conteúdo Programático (Pesado) ---
-                statusText.innerText = "2/2: Detalhando Matérias e Tópicos...";
-                const contentData = await chamarBackend('analisar_materias');
+                // --- FASE 2: Identificar Matérias ---
+                statusText.innerText = "2/3: Identificando Matérias...";
+                const materiasData = await chamarBackend('identificar_materias');
                 
-                // Remove placeholder
+                // Remove loading placeholder
                 const placeholder = document.getElementById(loadingId);
                 if(placeholder) placeholder.remove();
 
-                if (contentData) {
-                    window.currentEditalData = { ...window.currentEditalData, ...contentData };
-                    renderDashboard(window.currentEditalData);
+                if (materiasData && materiasData.materias) {
+                    // Renderiza placeholders para cada matéria
+                    renderMateriasPlaceholders(materiasData.materias);
+                    
+                    // --- FASE 3: Detalhar cada Matéria ---
+                    statusText.innerText = "3/3: Extraindo Tópicos...";
+                    
+                    // Inicializa objeto de conteúdo se não existir
+                    window.currentEditalData.conteudo_programatico = {};
+                    
+                    for (const materia of materiasData.materias) {
+                         // Atualiza status visual
+                        document.getElementById('statusText').innerText = `Lendo: ${materia}...`;
+                        
+                        // Busca tópicos da matéria específica
+                        try {
+                            const topicosData = await chamarBackend('analisar_topicos_materia', 0, { materia: materia });
+                            
+                            if (topicosData && topicosData.topicos) {
+                                // Atualiza dados globais
+                                window.currentEditalData.conteudo_programatico[materia] = topicosData.topicos;
+                                
+                                // Atualiza Card na UI
+                                updateMateriaCard(materia, topicosData.topicos);
+                            }
+                        } catch (err) {
+                            console.error(`Erro ao ler matéria ${materia}:`, err);
+                            updateMateriaCard(materia, ["Erro ao ler tópicos desta matéria."]);
+                        }
+                    }
                     
                     // Salvar no Firestore apenas quando tiver tudo
                     if (window.saveEditalToFirestore) {
@@ -851,6 +878,68 @@
             }
         }
 
+        function renderMateriasPlaceholders(materias) {
+            // Garante que o container existe
+            let conteudosDiv = document.getElementById('dash-conteudos');
+            if (!conteudosDiv) {
+                conteudosDiv = document.createElement('div');
+                conteudosDiv.id = 'dash-conteudos';
+                conteudosDiv.className = "glass-card p-6 rounded-3xl border border-white/10 mt-6";
+                conteudosDiv.innerHTML = `<h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">📑 Conteúdo Detalhado</h3>`;
+                
+                const list = document.createElement('div');
+                list.id = 'dash-conteudos-list';
+                list.className = "space-y-4";
+                conteudosDiv.appendChild(list);
+                
+                document.getElementById('panel-visao-geral').appendChild(conteudosDiv);
+            }
+
+            const listDiv = document.getElementById('dash-conteudos-list');
+            listDiv.innerHTML = ''; // Limpa lista anterior
+
+            materias.forEach(materia => {
+                const safeId = 'materia-' + materia.replace(/[^a-zA-Z0-9]/g, '_');
+                const card = document.createElement('div');
+                card.id = safeId;
+                card.className = "p-4 rounded-xl bg-gray-800/30 border border-gray-700/50";
+                
+                // Skeleton Loading State
+                card.innerHTML = `
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="text-blue-400 font-semibold">${materia}</h4>
+                        <div class="w-4 h-4 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
+                    </div>
+                    <div class="space-y-2 animate-pulse">
+                        <div class="h-2 bg-gray-700 rounded w-3/4"></div>
+                        <div class="h-2 bg-gray-700 rounded w-full"></div>
+                    </div>
+                `;
+                listDiv.appendChild(card);
+            });
+        }
+
+        function updateMateriaCard(materia, topicos) {
+            const safeId = 'materia-' + materia.replace(/[^a-zA-Z0-9]/g, '_');
+            const card = document.getElementById(safeId);
+            
+            if (card) {
+                card.className = "p-4 rounded-xl bg-gray-800/30 border border-gray-700/50 transition-all duration-500";
+                card.innerHTML = `
+                    <h4 class="text-blue-400 font-semibold mb-2 flex items-center gap-2">
+                        <span class="text-green-400">✓</span> ${materia}
+                    </h4>
+                    <p class="text-sm text-gray-300 leading-relaxed">${Array.isArray(topicos) ? topicos.join(', ') : topicos}</p>
+                `;
+                // Highlight effect
+                card.classList.add('bg-blue-500/10', 'border-blue-500/30');
+                setTimeout(() => {
+                    card.classList.remove('bg-blue-500/10', 'border-blue-500/30');
+                    card.classList.add('bg-gray-800/30', 'border-gray-700/50');
+                }, 2000);
+            }
+        }
+
         async function extractTextFromPDF(file) {
             try {
                 const arrayBuffer = await file.arrayBuffer();
@@ -878,7 +967,7 @@
             }
         }
 
-        async function chamarBackend(acao, retryCount = 0) {
+        async function chamarBackend(acao, retryCount = 0, extraPayload = {}) {
             const statusDiv = document.getElementById('status');
             const resultDiv = document.getElementById('resultadoArea');
             const simuladoDiv = document.getElementById('simuladoArea');
@@ -907,11 +996,11 @@
             // Otimiza o texto antes de enviar
             let type = 'general';
             if (acao === 'analisar_metadados') type = 'metadados';
-            if (acao === 'analisar_materias') type = 'materias';
+            if (acao === 'analisar_materias' || acao === 'identificar_materias' || acao === 'analisar_topicos_materia') type = 'materias';
             const textToSend = getSmartContext(text, type);
 
             statusDiv.classList.remove('hidden');
-            if(!acao.startsWith('analisar_')) {
+            if(!acao.startsWith('analisar_') && !acao.startsWith('identificar_')) {
                 // If generating plan/quiz, we can keep dashboard visible but show loading
                 document.getElementById('statusText').innerText = "Gerando conteúdo...";
             }
@@ -933,7 +1022,8 @@
                     body: JSON.stringify({
                         text: textToSend,
                         action: acao,
-                        topic: "Conhecimentos Específicos"
+                        topic: "Conhecimentos Específicos",
+                        ...extraPayload
                     })
                 });
 
