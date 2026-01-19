@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 export default async (request, context) => {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -108,25 +108,30 @@ ${texto_edital.slice(0, 30000)}
     }
 
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-flash",
-            generationConfig: isJsonMode ? { responseMimeType: "application/json" } : {}
-        });
+        const genAI = new GoogleGenAI({ apiKey: apiKey });
         
-        // Se for JSON (Simulado), usa generateContent normal
+        // Configuração do modelo
+        const config = isJsonMode ? { responseMimeType: "application/json" } : {};
+        
+        // Se for JSON (Simulado/Análise), usa generateContent normal
         if (isJsonMode) {
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
+            const result = await genAI.models.generateContent({
+                model: "gemini-1.5-flash",
+                contents: prompt,
+                config: config
+            });
             
-            return new Response(text, {
+            return new Response(result.text, {
                 headers: { "Content-Type": "application/json" }
             });
 
         } else {
             // Se for Texto/Markdown (Plano, Quiz simples), usa Stream
-            const result = await model.generateContentStream(prompt);
+            const result = await genAI.models.generateContentStream({
+                model: "gemini-1.5-flash",
+                contents: prompt,
+                config: config
+            });
 
             const stream = new ReadableStream({
                 async start(controller) {
