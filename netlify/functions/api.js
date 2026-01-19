@@ -171,63 +171,42 @@ ${texto_edital}
             safetySettings: safetySettings
         };
         
-        // Se for JSON (Simulado/Análise), usa generateContent normal
-        if (isJsonMode) {
-            const result = await ai.models.generateContent({
-                model: "models/gemini-pro-latest",
-                contents: prompt,
-                config: requestConfig
-            });
-            
-            // Novo SDK: response.text é uma propriedade, não função
-            let responseText = result.text;
-            
-            // Limpeza robusta de Markdown (remove ```json e ```)
-            if (responseText) {
-                responseText = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
-            }
-            
-            return new Response(responseText, {
-                headers: { "Content-Type": "application/json" }
-            });
+        // Força Stream para TODAS as requisições para evitar Timeout do Netlify
+        // O frontend irá acumular o JSON se necessário
+        const result = await ai.models.generateContentStream({
+            model: "models/gemini-pro-latest",
+            contents: prompt,
+            config: requestConfig
+        });
 
-        } else {
-            // Se for Texto/Markdown (Plano, Quiz simples), usa Stream
-            const result = await ai.models.generateContentStream({
-                model: "models/gemini-pro-latest",
-                contents: prompt,
-                config: requestConfig
-            });
-
-            const stream = new ReadableStream({
-                async start(controller) {
-                    try {
-                        for await (const chunk of result.stream) {
-                            // Novo SDK: verifica se chunk.text é propriedade ou função
-                            let chunkText = chunk.text;
-                            if (typeof chunkText === 'function') {
-                                chunkText = chunkText();
-                            }
-                            
-                            if (chunkText) {
-                                controller.enqueue(new TextEncoder().encode(chunkText));
-                            }
+        const stream = new ReadableStream({
+            async start(controller) {
+                try {
+                    for await (const chunk of result.stream) {
+                        // Novo SDK: verifica se chunk.text é propriedade ou função
+                        let chunkText = chunk.text;
+                        if (typeof chunkText === 'function') {
+                            chunkText = chunkText();
                         }
-                        controller.close();
-                    } catch (err) {
-                        console.error("Stream error:", err);
-                        controller.error(err);
+                        
+                        if (chunkText) {
+                            controller.enqueue(new TextEncoder().encode(chunkText));
+                        }
                     }
-                },
-            });
-
-            return new Response(stream, {
-                headers: {
-                    "Content-Type": "text/markdown; charset=utf-8",
-                    "Transfer-Encoding": "chunked"
+                    controller.close();
+                } catch (err) {
+                    console.error("Stream error:", err);
+                    controller.error(err);
                 }
-            });
-        }
+            },
+        });
+
+        return new Response(stream, {
+            headers: {
+                "Content-Type": isJsonMode ? "application/json" : "text/markdown; charset=utf-8",
+                "Transfer-Encoding": "chunked"
+            }
+        });
 
     } catch (e) {
         console.error("Erro na API:", e);

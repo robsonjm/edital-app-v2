@@ -801,26 +801,47 @@
                     throw new Error(errorMsg);
                 }
 
-                if (acao === 'analisar_edital') {
-                    const data = await response.json();
-                    renderDashboard(data);
+                if (acao === 'analisar_edital' || acao === 'simulado_real') {
+                    // Accumulate stream for JSON parsing
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    let fullText = "";
+
+                    console.log(`Iniciando leitura do stream para ${acao}...`);
                     
-                    // Save to Firestore
-                    if (window.saveEditalToFirestore) {
-                        window.saveEditalToFirestore(data, text);
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+                        const chunk = decoder.decode(value, { stream: true });
+                        fullText += chunk;
                     }
-                } else if (acao === 'simulado_real') {
-                    const data = await response.json();
-                    
-                    // Move Simulado Area to Treino Panel
-                    const panel = document.getElementById('panel-treino');
-                    const simArea = document.getElementById('simuladoArea');
-                    if (!panel.contains(simArea)) {
-                        panel.appendChild(simArea);
+
+                    // Clean markdown JSON if present
+                    let jsonStr = fullText;
+                    if (jsonStr.includes("```json")) {
+                        jsonStr = jsonStr.replace(/```json/g, "").replace(/```/g, "");
+                    } else if (jsonStr.includes("```")) {
+                        jsonStr = jsonStr.replace(/```/g, "");
                     }
                     
-                    startSimulado(data);
-                    statusDiv.classList.add('hidden');
+                    const data = JSON.parse(jsonStr.trim());
+
+                    if (acao === 'analisar_edital') {
+                        renderDashboard(data);
+                        // Save to Firestore
+                        if (window.saveEditalToFirestore) {
+                            window.saveEditalToFirestore(data, text);
+                        }
+                    } else {
+                         // Move Simulado Area to Treino Panel
+                        const panel = document.getElementById('panel-treino');
+                        const simArea = document.getElementById('simuladoArea');
+                        if (!panel.contains(simArea)) {
+                            panel.appendChild(simArea);
+                        }
+                        startSimulado(data);
+                        statusDiv.classList.add('hidden');
+                    }
                 } else {
                     // Fluxo normal (Markdown Stream - Plano/Quiz)
                     let targetDiv = resultDiv;
