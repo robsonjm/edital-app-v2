@@ -173,11 +173,23 @@ ${texto_edital}
         
         // Força Stream para TODAS as requisições para evitar Timeout do Netlify
         // O frontend irá acumular o JSON se necessário
-        const result = await ai.models.generateContentStream({
-            model: "models/gemini-pro-latest",
-            contents: prompt,
-            config: requestConfig
-        });
+        let result;
+        try {
+            console.log(`Iniciando geração com modelo models/gemini-pro-latest...`);
+            result = await ai.models.generateContentStream({
+                model: "models/gemini-pro-latest",
+                contents: prompt,
+                config: requestConfig
+            });
+        } catch (e) {
+            console.error("Erro na chamada da AI:", e);
+            return new Response(JSON.stringify({ 
+                error: "Erro na IA (Google): " + (e.message || String(e)) 
+            }), {
+                status: 500,
+                headers: { "Content-Type": "application/json" }
+            });
+        }
 
         const stream = new ReadableStream({
             async start(controller) {
