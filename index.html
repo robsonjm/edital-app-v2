@@ -907,13 +907,30 @@
 
                     // Clean markdown JSON if present
                     let jsonStr = fullText;
+                    
+                    console.log("Raw Response:", jsonStr); // Debug Log
+
+                    // Remove potential whitespace/newlines from start
+                    jsonStr = jsonStr.trim();
+
                     if (jsonStr.includes("```json")) {
                         jsonStr = jsonStr.replace(/```json/g, "").replace(/```/g, "");
                     } else if (jsonStr.includes("```")) {
                         jsonStr = jsonStr.replace(/```/g, "");
                     }
                     
-                    const data = JSON.parse(jsonStr.trim());
+                    // Attempt to fix common JSON errors (like trailing commas or incomplete brackets) could go here
+                    // For now, let's just trim again
+                    jsonStr = jsonStr.trim();
+                    
+                    let data;
+                    try {
+                        data = JSON.parse(jsonStr);
+                    } catch (e) {
+                        console.error("JSON Parse Error:", e);
+                        console.error("Invalid JSON String:", jsonStr);
+                        throw new Error("A IA retornou uma resposta inválida. Tente novamente.");
+                    }
 
                     if (acao.startsWith('analisar_')) {
                         // Retorna os dados para serem processados pelo caller (handleFileUpload)
