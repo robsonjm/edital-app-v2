@@ -114,7 +114,7 @@ ${texto_edital.slice(0, 30000)}
         });
         
         // Configuração do modelo
-        const config = isJsonMode ? { responseMimeType: "application/json" } : {};
+        const config = isJsonMode ? { response_mime_type: "application/json" } : {};
         
         // Se for JSON (Simulado/Análise), usa generateContent normal
         if (isJsonMode) {
