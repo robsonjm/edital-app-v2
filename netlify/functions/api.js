@@ -180,7 +180,7 @@ ${texto_edital}
 
         // Configuração do modelo
         const requestConfig = {
-            response_mime_type: isJsonMode ? "application/json" : "text/plain",
+            responseMimeType: isJsonMode ? "application/json" : "text/plain",
             safetySettings: safetySettings
         };
         
@@ -201,7 +201,11 @@ ${texto_edital}
                         config: requestConfig
                     });
 
-                    for await (const chunk of result.stream) {
+                    // Compatibilidade com diferentes versões do SDK
+                    // No novo SDK @google/genai, 'result' pode ser o próprio iterável ou ter a propriedade .stream
+                    const streamIterable = result.stream || result;
+
+                    for await (const chunk of streamIterable) {
                         // Novo SDK: verifica se chunk.text é propriedade ou função
                         let chunkText = chunk.text;
                         if (typeof chunkText === 'function') {
