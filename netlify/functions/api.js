@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 
 export default async (request, context) => {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -108,20 +108,21 @@ ${texto_edital.slice(0, 30000)}
     }
 
     try {
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const ai = new GoogleGenAI({ apiKey: apiKey });
         
-        // Configuração do modelo
-        const generationConfig = isJsonMode ? { responseMimeType: "application/json" } : {};
-        
-        const model = genAI.getGenerativeModel({ 
-            model: "gemini-1.5-flash",
-            generationConfig: generationConfig
-        });
+        // Configuração do modelo - Novo SDK usa snake_case
+        const config = isJsonMode ? { response_mime_type: "application/json" } : {};
         
         // Se for JSON (Simulado/Análise), usa generateContent normal
         if (isJsonMode) {
-            const result = await model.generateContent(prompt);
-            const responseText = result.response.text();
+            const result = await ai.models.generateContent({
+                model: "gemini-1.5-flash",
+                contents: prompt,
+                config: config
+            });
+            
+            // Novo SDK: response.text é uma propriedade, não função
+            const responseText = result.text; 
             
             return new Response(responseText, {
                 headers: { "Content-Type": "application/json" }
@@ -129,13 +130,23 @@ ${texto_edital.slice(0, 30000)}
 
         } else {
             // Se for Texto/Markdown (Plano, Quiz simples), usa Stream
-            const result = await model.generateContentStream(prompt);
+            const result = await ai.models.generateContentStream({
+                model: "gemini-1.5-flash",
+                contents: prompt,
+                config: config
+            });
 
             const stream = new ReadableStream({
                 async start(controller) {
                     try {
                         for await (const chunk of result.stream) {
-                            const chunkText = chunk.text();
+                            // Novo SDK: verifica se chunk.text é propriedade ou função
+                            // Assumindo propriedade baseado no padrão, mas tratando ambos por segurança
+                            let chunkText = chunk.text;
+                            if (typeof chunkText === 'function') {
+                                chunkText = chunkText();
+                            }
+                            
                             if (chunkText) {
                                 controller.enqueue(new TextEncoder().encode(chunkText));
                             }
