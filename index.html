@@ -791,12 +791,12 @@
 
                 if (!response.ok) {
                     let errorMsg = `Erro na API (${response.status})`;
+                    const errorText = await response.text();
                     try {
-                        const errorData = await response.json();
+                        const errorData = JSON.parse(errorText);
                         errorMsg = errorData.error || errorMsg;
                     } catch (e) {
-                        const textErr = await response.text();
-                        if (textErr) errorMsg = textErr;
+                        if (errorText) errorMsg = errorText;
                     }
                     throw new Error(errorMsg);
                 }
