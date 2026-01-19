@@ -702,6 +702,11 @@
                 if (metaData) {
                     window.currentEditalData = { ...window.currentEditalData, ...metaData };
                     renderDashboard(window.currentEditalData);
+                    
+                    // Salvar Metadados imediatamente
+                    if (window.saveEditalToFirestore) {
+                        window.saveEditalToFirestore(window.currentEditalData, window.currentEditalText);
+                    }
                 }
 
                 // --- Placeholder para FASE 2 ---
@@ -756,6 +761,11 @@
                                 
                                 // Atualiza Card na UI
                                 updateMateriaCard(materia, topicosData.topicos);
+
+                                // Salvar Progresso (Materia por Materia)
+                                if (window.saveEditalToFirestore) {
+                                    window.saveEditalToFirestore(window.currentEditalData, window.currentEditalText);
+                                }
                             }
                         } catch (err) {
                             console.error(`Erro ao ler matéria ${materia}:`, err);
