@@ -556,6 +556,12 @@
                     const pageText = textContent.items.map(item => item.str).join(' ');
                     fullText += `--- Página ${i} ---\n${pageText}\n`;
                 }
+                
+                console.log(`PDF processado: ${pdf.numPages} páginas, ${fullText.length} caracteres.`);
+                if (fullText.length < 500) {
+                    alert("Atenção: O texto extraído do PDF parece muito curto. Se o seu PDF for uma imagem digitalizada (scanned), a IA pode não conseguir ler. Tente usar um PDF com texto selecionável.");
+                }
+
                 return fullText;
             } catch (error) {
                 console.error("Erro ao ler PDF:", error);

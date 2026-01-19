@@ -88,7 +88,7 @@ Retorne APENAS um JSON válido com a seguinte estrutura:
 }
 
 Texto do Edital:
-${texto_edital.slice(0, 30000)}
+${texto_edital}
 `;
     } else if (action === "simulado_real") {
         isJsonMode = true;
