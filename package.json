@@ -4,6 +4,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@google/genai": "^1.37.0"
+    "@google/generative-ai": "^0.24.0"
   }
 }
