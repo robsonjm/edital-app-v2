@@ -913,15 +913,22 @@
                     // Remove potential whitespace/newlines from start
                     jsonStr = jsonStr.trim();
 
-                    if (jsonStr.includes("```json")) {
-                        jsonStr = jsonStr.replace(/```json/g, "").replace(/```/g, "");
-                    } else if (jsonStr.includes("```")) {
-                        jsonStr = jsonStr.replace(/```/g, "");
+                    // --- Robust JSON Extraction ---
+                    // Às vezes a IA coloca texto antes ou depois do bloco de código.
+                    // Vamos tentar extrair apenas o conteúdo entre a primeira { e a última }
+                    const firstBrace = jsonStr.indexOf('{');
+                    const lastBrace = jsonStr.lastIndexOf('}');
+
+                    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+                        jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+                    } else {
+                        // Se não achar chaves, tenta limpar markdown padrão
+                        if (jsonStr.includes("```json")) {
+                            jsonStr = jsonStr.replace(/```json/g, "").replace(/```/g, "");
+                        } else if (jsonStr.includes("```")) {
+                            jsonStr = jsonStr.replace(/```/g, "");
+                        }
                     }
-                    
-                    // Attempt to fix common JSON errors (like trailing commas or incomplete brackets) could go here
-                    // For now, let's just trim again
-                    jsonStr = jsonStr.trim();
                     
                     let data;
                     try {
@@ -929,7 +936,25 @@
                     } catch (e) {
                         console.error("JSON Parse Error:", e);
                         console.error("Invalid JSON String:", jsonStr);
-                        throw new Error("A IA retornou uma resposta inválida. Tente novamente.");
+                        
+                        // Fallback: Tentar corrigir JSON quebrado (comum em streams interrompidas)
+                        // Ex: falta fechar aspas ou chaves no final
+                        try {
+                            // Tenta fechar aspas se estiver aberto
+                            if ((jsonStr.match(/"/g) || []).length % 2 !== 0) {
+                                jsonStr += '"';
+                            }
+                             // Tenta fechar chaves se faltar
+                             const openBraces = (jsonStr.match(/{/g) || []).length;
+                             const closeBraces = (jsonStr.match(/}/g) || []).length;
+                             for(let i=0; i < (openBraces - closeBraces); i++) {
+                                 jsonStr += "}";
+                             }
+                             data = JSON.parse(jsonStr);
+                             console.warn("JSON recuperado automaticamente!");
+                        } catch (e2) {
+                            throw new Error("A IA retornou uma resposta inválida. Tente novamente.");
+                        }
                     }
 
                     if (acao.startsWith('analisar_')) {
