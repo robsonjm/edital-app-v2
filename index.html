@@ -284,6 +284,11 @@
                             Gerar Novo Plano
                          </button>
                     </div>
+                    
+                    <!-- Área Específica para o Plano -->
+                    <div id="planoResult" class="hidden glass-card rounded-3xl p-8 sm:p-12 border border-white/10 shadow-2xl animate-fade-in-up">
+                        <div class="prose prose-invert prose-lg max-w-none prose-headings:text-blue-300 prose-a:text-blue-400 prose-strong:text-white"></div>
+                    </div>
                 </div>
 
                 <!-- Tab: Treino -->
@@ -685,6 +690,27 @@
             // Show Dashboard
             document.getElementById('contestDashboard').classList.remove('hidden');
             document.getElementById('status').classList.add('hidden');
+
+            // Render Conteúdo Programático if available
+            if (data.conteudo_programatico) {
+                const conteudosDiv = document.createElement('div');
+                conteudosDiv.className = "glass-card p-6 rounded-3xl border border-white/10 mt-6";
+                conteudosDiv.innerHTML = `<h3 class="text-xl font-bold text-white mb-4 flex items-center gap-2">📑 Conteúdo Detalhado</h3>`;
+                
+                const list = document.createElement('div');
+                list.className = "space-y-4";
+                
+                for (const [materia, topicos] of Object.entries(data.conteudo_programatico)) {
+                    list.innerHTML += `
+                        <div>
+                            <h4 class="text-blue-400 font-semibold mb-1">${materia}</h4>
+                            <p class="text-sm text-gray-400 leading-relaxed">${Array.isArray(topicos) ? topicos.join(', ') : topicos}</p>
+                        </div>
+                    `;
+                }
+                conteudosDiv.appendChild(list);
+                document.getElementById('panel-visao-geral').appendChild(conteudosDiv);
+            }
             
             // Minimize Upload Section (Optional: could add a class to make it smaller)
         }
@@ -703,6 +729,8 @@
                 }
                 
                 console.log(`PDF processado: ${pdf.numPages} páginas, ${fullText.length} caracteres.`);
+                console.log("Início do texto extraído:", fullText.substring(0, 200));
+
                 if (fullText.length < 500) {
                     alert("Atenção: O texto extraído do PDF parece muito curto. Se o seu PDF for uma imagem digitalizada (scanned), a IA pode não conseguir ler. Tente usar um PDF com texto selecionável.");
                 }
@@ -741,7 +769,11 @@
             }
             
             // Hide result areas temporarily while loading new content
-            if (acao === 'plano') resultDiv.classList.add('hidden');
+            if (acao === 'plano') {
+                document.getElementById('planoResult').classList.add('hidden');
+                // Ensure tab is active
+                switchTab('plano-estudos');
+            }
             if (acao === 'simulado_real') simuladoDiv.classList.add('hidden');
             
             statusDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -791,17 +823,16 @@
                     statusDiv.classList.add('hidden');
                 } else {
                     // Fluxo normal (Markdown Stream - Plano/Quiz)
+                    let targetDiv = resultDiv;
+                    
                     if (acao === 'plano') {
-                        // Move result div to plan tab if needed, or just ensure it's visible
-                        const panel = document.getElementById('panel-plano-estudos');
-                        if (!panel.contains(resultDiv)) {
-                            panel.appendChild(resultDiv);
-                        }
+                        targetDiv = document.getElementById('planoResult');
                     }
                     
-                    resultDiv.innerHTML = '<div class="prose prose-invert prose-lg max-w-none prose-headings:text-blue-300 prose-a:text-blue-400 prose-strong:text-white"></div>';
-                    const contentDiv = resultDiv.querySelector('div');
-                    resultDiv.classList.remove('hidden');
+                    console.log("Iniciando leitura do stream...");
+                    targetDiv.innerHTML = '<div class="prose prose-invert prose-lg max-w-none prose-headings:text-blue-300 prose-a:text-blue-400 prose-strong:text-white"><p class="animate-pulse">Gerando...</p></div>';
+                    const contentDiv = targetDiv.querySelector('div');
+                    targetDiv.classList.remove('hidden');
                     
                     const reader = response.body.getReader();
                     const decoder = new TextDecoder();
@@ -811,13 +842,18 @@
                         const { done, value } = await reader.read();
                         if (done) break;
                         const chunk = decoder.decode(value, { stream: true });
+                        console.log("Chunk recebido:", chunk.length);
                         markdown += chunk;
                         contentDiv.innerHTML = marked.parse(markdown);
                     }
                     
+                    if (!markdown) {
+                        contentDiv.innerHTML = "<p class='text-red-400'>Nenhuma resposta gerada pela IA.</p>";
+                    }
+
                     finishAction(text, acao, markdown);
                     statusDiv.classList.add('hidden');
-                    resultDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    targetDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 }
 
             } catch (error) {

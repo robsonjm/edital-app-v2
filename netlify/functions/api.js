@@ -53,16 +53,35 @@ export default async (request, context) => {
 
     if (action === "plano") {
         prompt = `
-Aja como um tutor especialista. Com base no texto deste edital:
-${texto_edital.slice(0, 30000)}
+Aja como um tutor especialista. O objetivo é criar um plano de estudos de ALTA PRECISÃO baseado no edital.
 
-Crie um cronograma de estudos semanal detalhado e tabelado.
-Saída em Markdown.
+1. Identifique no texto as seções de CONTEÚDO PROGRAMÁTICO (geralmente em Anexos).
+2. Para cada matéria, liste os tópicos EXATOS exigidos.
+3. Crie um cronograma semanal que cubra esses tópicos.
+
+Saída em Markdown (Tabela e Lista de Tópicos Detalhada).
+Use o seguinte formato:
+
+## 📋 Conteúdo Programático Identificado
+(Liste aqui o que você encontrou no edital, confirmando que leu o anexo correto)
+
+## 📅 Cronograma Semanal
+| Dia | Matéria | Tópicos a Estudar |
+|---|---|---|
+...
+
+## 💡 Dicas de Estudo
+...
+
+Texto do Edital:
+${texto_edital}
 `;
     } else if (action === "quiz") {
         const topico = body.topic || "Geral";
         prompt = `
-Com base no edital fornecido, crie um QUIZ de 5 questões múltipla escolha sobre o tópico: ${topico}.
+Com base no CONTEÚDO PROGRAMÁTICO do edital fornecido, crie um QUIZ de 5 questões múltipla escolha sobre o tópico: ${topico}.
+Foque nos detalhes específicos mencionados nos anexos do edital.
+
 Formate a saída assim:
 **Pergunta**
 a) ...
@@ -75,6 +94,9 @@ b) ...
         isJsonMode = true;
         prompt = `
 Analise o texto do edital fornecido e extraia as informações principais para criar um "Perfil do Concurso".
+ATENÇÃO: Procure minuciosamente por ANEXOS ou seções de CONTEÚDO PROGRAMÁTICO (syllabus) que detalham o que cairá na prova.
+Desmembre os tópicos de cada matéria para termos uma visão detalhada do que estudar.
+
 Retorne APENAS um JSON válido com a seguinte estrutura:
 {
   "nome_concurso": "Nome do Órgão / Cargo",
@@ -84,6 +106,10 @@ Retorne APENAS um JSON válido com a seguinte estrutura:
   "escolaridade": "Nível de escolaridade exigido",
   "vagas": "Número de vagas (ou 'CR')",
   "resumo_materias": ["Matéria 1", "Matéria 2", "Matéria 3", "etc"],
+  "conteudo_programatico": {
+      "Nome da Matéria 1": ["Tópico 1", "Tópico 2", "Detalhe do Anexo..."],
+      "Nome da Matéria 2": ["Tópico A", "Tópico B"]
+  },
   "etapas": ["Prova Objetiva", "Redação", "Títulos", "etc"]
 }
 
@@ -93,9 +119,8 @@ ${texto_edital}
     } else if (action === "simulado_real") {
         isJsonMode = true;
         prompt = `
-Analise o texto do edital fornecido e extraia informações sobre a estrutura da prova (tempo, número de questões, matérias, estilo da banca).
-Com base nisso, crie um SIMULADO GAMIFICADO E REALÍSTICO.
-O objetivo é que o usuário sinta que está fazendo a prova, mas de forma engajadora.
+Analise o texto do edital fornecido, ESPECIALMENTE O CONTEÚDO PROGRAMÁTICO (ANEXOS), e crie um SIMULADO GAMIFICADO.
+As questões devem ser baseadas nos tópicos REAIS que cairão na prova.
 
 Gere 10 questões de múltipla escolha (A, B, C, D, E) seguindo a proporção de matérias do edital.
 Cada questão deve ter um nível de dificuldade variado (Fácil, Médio, Difícil).
@@ -111,12 +136,12 @@ Retorne APENAS um JSON válido com esta estrutura:
   "questions": [
     {
       "id": 1,
-      "subject": "Nome da Matéria",
+      "subject": "Nome da Matéria (Ex: Português)",
       "difficulty": "Médio",
-      "question": "Enunciado da questão...",
+      "question": "Enunciado da questão (baseado no conteúdo programático)...",
       "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D", "Alternativa E"],
-      "correct_answer": 0, // Índice da resposta correta (0-4)
-      "explanation": "Explicação detalhada do porquê a alternativa está correta e as outras incorretas."
+      "correct_answer": 0,
+      "explanation": "Explicação detalhada."
     }
   ]
 }
@@ -132,15 +157,26 @@ ${texto_edital}
     }
 
     try {
-        // Configuração do modelo - Novo SDK usa snake_case
-        const config = isJsonMode ? { response_mime_type: "application/json" } : {};
+        // Configuração de Segurança (Permissiva para evitar bloqueios em editais)
+        const safetySettings = [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+        ];
+
+        // Configuração do modelo
+        const requestConfig = {
+            response_mime_type: isJsonMode ? "application/json" : "text/plain",
+            safetySettings: safetySettings
+        };
         
         // Se for JSON (Simulado/Análise), usa generateContent normal
         if (isJsonMode) {
             const result = await ai.models.generateContent({
-                model: "models/gemini-pro-latest",
+                model: "gemini-1.5-flash",
                 contents: prompt,
-                config: config
+                config: requestConfig
             });
             
             // Novo SDK: response.text é uma propriedade, não função
@@ -158,9 +194,9 @@ ${texto_edital}
         } else {
             // Se for Texto/Markdown (Plano, Quiz simples), usa Stream
             const result = await ai.models.generateContentStream({
-                model: "models/gemini-pro-latest",
+                model: "gemini-1.5-flash",
                 contents: prompt,
-                config: config
+                config: requestConfig
             });
 
             const stream = new ReadableStream({
@@ -168,7 +204,6 @@ ${texto_edital}
                     try {
                         for await (const chunk of result.stream) {
                             // Novo SDK: verifica se chunk.text é propriedade ou função
-                            // Assumindo propriedade baseado no padrão, mas tratando ambos por segurança
                             let chunkText = chunk.text;
                             if (typeof chunkText === 'function') {
                                 chunkText = chunkText();
@@ -180,6 +215,7 @@ ${texto_edital}
                         }
                         controller.close();
                     } catch (err) {
+                        console.error("Stream error:", err);
                         controller.error(err);
                     }
                 },
