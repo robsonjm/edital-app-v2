@@ -132,7 +132,7 @@ ${texto_edital.slice(0, 30000)}
         // Se for JSON (Simulado/Análise), usa generateContent normal
         if (isJsonMode) {
             const result = await ai.models.generateContent({
-                model: "gemini-1.5-flash",
+                model: "models/gemini-pro-latest",
                 contents: prompt,
                 config: config
             });
@@ -147,7 +147,7 @@ ${texto_edital.slice(0, 30000)}
         } else {
             // Se for Texto/Markdown (Plano, Quiz simples), usa Stream
             const result = await ai.models.generateContentStream({
-                model: "gemini-1.5-flash",
+                model: "models/gemini-pro-latest",
                 contents: prompt,
                 config: config
             });
