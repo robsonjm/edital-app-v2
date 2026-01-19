@@ -108,7 +108,10 @@ ${texto_edital.slice(0, 30000)}
     }
 
     try {
-        const genAI = new GoogleGenAI({ apiKey: apiKey });
+        const genAI = new GoogleGenAI({ 
+            apiKey: apiKey, 
+            apiVersion: 'v1' 
+        });
         
         // Configuração do modelo
         const config = isJsonMode ? { responseMimeType: "application/json" } : {};
