@@ -30,6 +30,24 @@ export default async (request, context) => {
     const texto_edital = body.text || "";
     const action = body.action || "plano";
 
+    // Inicializa o SDK
+    const ai = new GoogleGenAI({ apiKey: apiKey });
+
+    // Ação para listar modelos (Debug)
+    if (action === "list_models") {
+        try {
+            const models = await ai.models.list();
+            return new Response(JSON.stringify(models), {
+                headers: { "Content-Type": "application/json" }
+            });
+        } catch (e) {
+            return new Response(JSON.stringify({ error: String(e.message || e) }), {
+                status: 500,
+                headers: { "Content-Type": "application/json" }
+            });
+        }
+    }
+
     let prompt;
     let isJsonMode = false;
 
@@ -108,8 +126,6 @@ ${texto_edital.slice(0, 30000)}
     }
 
     try {
-        const ai = new GoogleGenAI({ apiKey: apiKey });
-        
         // Configuração do modelo - Novo SDK usa snake_case
         const config = isJsonMode ? { response_mime_type: "application/json" } : {};
         
