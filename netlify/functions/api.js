@@ -234,14 +234,21 @@ ${texto_edital}
 
     // --- Call Gemini API ---
     try {
-        const model = genAI.getGenerativeModel({ 
+        console.log("Iniciando geração com modelo models/gemini-1.5-flash...");
+        
+        // Correção: Usando a instância 'ai' já inicializada e a sintaxe do SDK @google/genai
+        const result = await ai.models.generateContentStream({
             model: "models/gemini-1.5-flash",
-            generationConfig: {
+            contents: [
+                {
+                    role: "user",
+                    parts: [{ text: prompt }]
+                }
+            ],
+            config: {
                 responseMimeType: isJsonMode ? "application/json" : "text/plain"
             }
         });
-
-        const result = await model.generateContentStream(prompt);
 
         // --- Stream Response ---
         const responseStream = new ReadableStream({
@@ -250,10 +257,13 @@ ${texto_edital}
                 try {
                     for await (const chunk of result.stream) {
                         const text = chunk.text();
-                        controller.enqueue(encoder.encode(text));
+                        if (text) {
+                            controller.enqueue(encoder.encode(text));
+                        }
                     }
                     controller.close();
                 } catch (err) {
+                    console.error("Stream processing error:", err);
                     controller.error(err);
                 }
             }
