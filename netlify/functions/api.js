@@ -229,78 +229,48 @@ ${texto_edital}
         });
     }
 
+    // --- Call Gemini API ---
     try {
-        // Configuração de Segurança (Permissiva para evitar bloqueios em editais)
-        const safetySettings = [
-            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-        ];
+        const model = genAI.getGenerativeModel({ 
+            model: "models/gemini-1.5-flash",
+            generationConfig: {
+                responseMimeType: isJsonMode ? "application/json" : "text/plain"
+            }
+        });
 
-        // Configuração do modelo
-        const requestConfig = {
-            responseMimeType: isJsonMode ? "application/json" : "text/plain",
-            safetySettings: safetySettings
-        };
-        
-        // Força Stream para TODAS as requisições para evitar Timeout do Netlify
-        const stream = new ReadableStream({
+        const result = await model.generateContentStream(prompt);
+
+        // --- Stream Response ---
+        const responseStream = new ReadableStream({
             async start(controller) {
-                // 1. Envia um Keep-Alive IMEDIATO para o browser saber que a conexão foi aceita
-                // Isso evita o timeout de "Response Headers"
-                controller.enqueue(new TextEncoder().encode(" "));
-                
+                const encoder = new TextEncoder();
                 try {
-                    console.log(`Iniciando geração com modelo models/gemini-pro-latest...`);
-                    
-                    // 2. A chamada da IA acontece DENTRO da stream, não bloqueando a resposta inicial
-                    const result = await ai.models.generateContentStream({
-                        model: "models/gemini-pro-latest",
-                        contents: prompt,
-                        config: requestConfig
-                    });
-
-                    // Compatibilidade com diferentes versões do SDK
-                    // No novo SDK @google/genai, 'result' pode ser o próprio iterável ou ter a propriedade .stream
-                    const streamIterable = result.stream || result;
-
-                    for await (const chunk of streamIterable) {
-                        // Novo SDK: verifica se chunk.text é propriedade ou função
-                        let chunkText = chunk.text;
-                        if (typeof chunkText === 'function') {
-                            chunkText = chunkText();
-                        }
-                        
-                        if (chunkText) {
-                            controller.enqueue(new TextEncoder().encode(chunkText));
-                        }
+                    for await (const chunk of result.stream) {
+                        const text = chunk.text();
+                        controller.enqueue(encoder.encode(text));
                     }
                     controller.close();
                 } catch (err) {
-                    console.error("Stream error:", err);
-                    // Se der erro no meio da stream, enviamos um JSON de erro que o frontend pode tentar detectar
-                    // Ou apenas fechamos com erro, mas enviar texto ajuda no debug
-                    const errorMsg = JSON.stringify({ error: "Erro durante geração: " + (err.message || String(err)) });
-                    // Tenta enviar erro limpo se possível, mas provavelmente vai quebrar o JSON do frontend (o que é esperado nesse caso)
-                    controller.enqueue(new TextEncoder().encode("\n\n" + errorMsg));
-                    controller.close();
+                    controller.error(err);
                 }
-            },
+            }
         });
 
-        return new Response(stream, {
+        return new Response(responseStream, {
             headers: {
-                "Content-Type": isJsonMode ? "application/json" : "text/markdown; charset=utf-8",
+                "Content-Type": isJsonMode ? "application/json" : "text/plain; charset=utf-8",
                 "Transfer-Encoding": "chunked"
             }
         });
 
-    } catch (e) {
-        console.error("Erro na API:", e);
-        return new Response(JSON.stringify({ error: String(e.message || e) }), {
-            status: 500,
-            headers: { "Content-Type": "application/json" }
-        });
+    } catch (error) {
+        console.error("Gemini API Error:", error);
+        
+        // Verifica erro de sobrecarga ou indisponibilidade
+        if (error.message.includes("503") || error.message.includes("Overloaded")) {
+             return new Response(JSON.stringify({ error: "O servidor de IA está sobrecarregado no momento. Tente novamente em alguns segundos." }), { status: 503 });
+        }
+        
+        return new Response(JSON.stringify({ error: `Erro ao processar com IA: ${error.message}` }), { status: 500 });
     }
 };
