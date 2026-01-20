@@ -117,25 +117,28 @@ ${texto_edital}
         prompt = `
 Você é um especialista em concursos públicos.
 Analise o texto deste edital abaixo e extraia APENAS o conteúdo programático (o que cai na prova).
-ATENÇÃO: O Conteúdo Programático geralmente está no FINAL do texto ou em seções específicas.
+ATENÇÃO: O Conteúdo Programático geralmente está no FINAL do texto ou em seções chamadas "ANEXOS".
 
-Busque explicitamente por termos como:
-- "ANEXO" ou "ANEXO II"
+Busque explicitamente por seções iniciadas por:
+- "ANEXO" seguido de número (Ex: ANEXO 2, ANEXO II, ANEXO 02)
+- "ANEXO" seguido de letra (Ex: ANEXO B)
+- "ANEXO ÚNICO"
 - "PROGRAMAS DAS PROVAS"
 - "CONTEUDO PROGRAMATICO"
 - "PROGRAMA DA PROVA"
-- "CONTEUDO"
-- "PROGRAMAÇÂO"
+- "CONHECIMENTOS BÁSICOS" / "CONHECIMENTOS ESPECÍFICOS"
 
 CONTEXTUALIZAÇÃO:
-Analise o bloco de texto onde esses termos aparecem para confirmar se ele realmente lista os tópicos que serão avaliados nas provas. Não confunda com cronogramas ou regras gerais.
+Analise o bloco de texto onde esses termos aparecem. Se encontrar uma lista de tópicos/assuntos, É ISSO QUE QUEREMOS.
 
 Regras Críticas:
-1. Busque EXAUSTIVAMENTE por essas seções no texto fornecido.
-2. Ignore cabeçalhos repetitivos, datas, nomes de prefeitos ou regras burocráticas (inscrição, isenção).
-3. Foque apenas nas matérias: Português, Informática, Específicas, Conhecimentos Gerais, etc.
-4. Quebre os assuntos em tópicos pequenos para criar um checklist.
-5. Retorne APENAS um JSON seguindo estritamente esta estrutura:
+1. Busque EXAUSTIVAMENTE por essas seções. O texto pode estar fragmentado.
+2. Ignore cabeçalhos repetitivos, datas, nomes de prefeitos ou regras burocráticas.
+3. Foque apenas nas matérias: Português, Informática, Específicas, Raciocínio Lógico, etc.
+4. Quebre os assuntos em tópicos pequenos para criar um checklist claro.
+5. Se o texto estiver confuso, faça o seu melhor para inferir a separação entre as matérias.
+
+Retorne APENAS um JSON seguindo estritamente esta estrutura:
 
 {
   "titulo_concurso": "Nome do Órgão",

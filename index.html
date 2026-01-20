@@ -619,7 +619,7 @@
             // Garante Início (Contexto) + Fim (Anexos) + Recheio (Palavras-chave)
             
             const RESERVED_START = 15000; // Cabeçalho, definições iniciais
-            const RESERVED_END = 50000;   // Anexos geralmente estão no final (aumentado para garantir)
+            const RESERVED_END = 60000;   // Anexos geralmente estão no final (aumentado para garantir)
             const DYNAMIC_BUDGET = MAX_CHARS - RESERVED_START - RESERVED_END;
 
             // 1. Pega Início e Fim garantidos
@@ -628,8 +628,8 @@
             
             // 2. Padrões Regex para identificar seções de conteúdo no "meio" do texto
             const patterns = [
-                // SUPER GENÉRICO para Anexos (Pega "ANEXO 2", "ANEXO II", "ANEXO ÚNICO" seguido de qualquer coisa que pareça título)
-                /ANEXO\s+(?:[IVX]+|\d+|ÚNICO|[A-Z])(?:\s*[-–.]?\s*)?(?:[A-ZÀ-Ú\s]{3,})/gi,
+                // SUPER GENÉRICO para Anexos (Pega "ANEXO 2", "ANEXO II", "ANEXO ÚNICO", "ANEXO: ..." ou apenas "ANEXO" seguido de título)
+                /ANEXO(?:\s+(?:[IVX]+|\d+|ÚNICO|[A-Z]))?(?:\s*[-–.:]\s*)?(?:[A-ZÀ-Ú\s]{3,})/gi,
                 
                 // Variações de Conteúdo Programático / Programas de Prova
                 /(?:CONTEÚDO|PROGRAMA)(?:\s+PROGRAMÁTICO)?\s+(?:DA|DAS|DE|DOS)?\s*(?:PROVAS?|AVALIAÇ(?:ÃO|ÕES)|CONCURSO|SELEÇÃO)/gi,
