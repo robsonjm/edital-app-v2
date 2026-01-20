@@ -234,11 +234,11 @@ ${texto_edital}
 
     // --- Call Gemini API ---
     try {
-        console.log("Iniciando geração com modelo models/gemini-1.5-flash...");
+        console.log("Iniciando geração com modelo gemini-1.5-flash...");
         
-        // Correção: Usando a instância 'ai' já inicializada e a sintaxe do SDK @google/genai
+        // Correção: Usando o nome correto do modelo para o SDK @google/genai
         const result = await ai.models.generateContentStream({
-            model: "models/gemini-1.5-flash",
+            model: "gemini-1.5-flash", // Removido o prefixo "models/"
             contents: [
                 {
                     role: "user",
