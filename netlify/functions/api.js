@@ -115,17 +115,42 @@ ${texto_edital}
     } else if (action === "identificar_materias") {
         isJsonMode = true;
         prompt = `
-Analise o texto fornecido (que pode conter trechos desconexos de várias partes do edital) e identifique as MATÉRIAS/DISCIPLINAS do Conteúdo Programático.
-Procure por seções como "Conteúdo Programático", "Anexo I", "Conhecimentos Básicos", "Conhecimentos Específicos".
-Ignore tópicos específicos (ex: 'Crase', 'Regra de três'), queremos apenas os TÍTULOS das matérias (Ex: Língua Portuguesa, Matemática, Direito Constitucional, Conhecimentos Específicos).
-Se houver subdivisões como "Conhecimentos Básicos" e "Específicos", liste as matérias dentro delas.
-Responda EXCLUSIVAMENTE com o objeto JSON. Sem markdown.
+Você é um especialista em concursos públicos.
+Analise o texto deste edital abaixo e extraia APENAS o conteúdo programático (o que cai na prova).
+ATENÇÃO: O Conteúdo Programático geralmente está no FINAL do texto ou em seções específicas.
+
+Busque explicitamente por termos como:
+- "ANEXO" ou "ANEXO II"
+- "PROGRAMAS DAS PROVAS"
+- "CONTEUDO PROGRAMATICO"
+- "PROGRAMA DA PROVA"
+- "CONTEUDO"
+- "PROGRAMAÇÂO"
+
+CONTEXTUALIZAÇÃO:
+Analise o bloco de texto onde esses termos aparecem para confirmar se ele realmente lista os tópicos que serão avaliados nas provas. Não confunda com cronogramas ou regras gerais.
+
+Regras Críticas:
+1. Busque EXAUSTIVAMENTE por essas seções no texto fornecido.
+2. Ignore cabeçalhos repetitivos, datas, nomes de prefeitos ou regras burocráticas (inscrição, isenção).
+3. Foque apenas nas matérias: Português, Informática, Específicas, Conhecimentos Gerais, etc.
+4. Quebre os assuntos em tópicos pequenos para criar um checklist.
+5. Retorne APENAS um JSON seguindo estritamente esta estrutura:
 
 {
-  "materias": ["Matéria 1", "Matéria 2"]
+  "titulo_concurso": "Nome do Órgão",
+  "materias": [
+    {
+      "nome": "Língua Portuguesa",
+      "topicos": [
+        { "id": 1, "assunto": "Crase" },
+        { "id": 2, "assunto": "Interpretação de Texto" }
+      ]
+    }
+  ]
 }
 
-Texto:
+Texto do Edital:
 ${texto_edital}
 `;
     } else if (action === "analisar_topicos_materia") {
@@ -133,8 +158,10 @@ ${texto_edital}
         const materiaAlvo = body.materia || "Geral";
         prompt = `
 Analise o texto e extraia SOMENTE os tópicos da matéria: "${materiaAlvo}".
-O texto pode conter fragmentos de outras partes, foque apenas onde fala de "${materiaAlvo}".
-Copie os tópicos exatamente como estão no edital.
+1. O texto pode conter fragmentos de outras partes, foque apenas onde fala de "${materiaAlvo}" ou variações (ex: se busco "Língua Portuguesa", aceite "Português").
+2. Se não encontrar a matéria exata, procure por conteúdos que tipicamente pertencem a ela.
+3. Copie os tópicos exatamente como estão no edital.
+
 Responda EXCLUSIVAMENTE com o objeto JSON. Sem markdown.
 
 {

@@ -63,7 +63,9 @@
                     })
                 }
             ]
-        }<script>
+        }
+    </script>
+    <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
         
         // Supress PDF.js Font warnings
@@ -487,16 +489,25 @@
                     banca: analysisData.banca || "Desconhecida",
                     vagas: analysisData.vagas || "N/A",
                     analysis_json: JSON.stringify(analysisData),
-                    full_text: fullText, // Note: Firestore doc limit 1MB. 
-                    createdAt: serverTimestamp()
+                    updatedAt: serverTimestamp()
                 };
+
+                if (!window.currentEditalFirestoreId) {
+                    // Create New
+                    editalData.full_text = fullText;
+                    editalData.createdAt = serverTimestamp();
+                    const docRef = await addDoc(collection(db, "users", auth.currentUser.uid, "editais"), editalData);
+                    window.currentEditalFirestoreId = docRef.id;
+                    console.log("Edital criado com ID:", docRef.id);
+                } else {
+                    // Update Existing
+                    await setDoc(doc(db, "users", auth.currentUser.uid, "editais", window.currentEditalFirestoreId), editalData, { merge: true });
+                    console.log("Edital atualizado:", window.currentEditalFirestoreId);
+                }
                 
-                await addDoc(collection(db, "users", auth.currentUser.uid, "editais"), editalData);
-                console.log("Edital salvo!");
                 window.loadEditaisFromFirestore(); // Refresh list
             } catch (e) {
                 console.error("Erro ao salvar edital:", e);
-                alert("Erro ao salvar edital no histórico: " + e.message);
             }
         };
 
@@ -589,8 +600,8 @@
     <script>
         // Função para selecionar partes relevantes do texto e reduzir o tamanho do payload
         function getSmartContext(fullText, type = 'general') {
-            // Aumentamos o limite para 100k caracteres (aprox 25k tokens), seguro para Gemini Pro
-            const MAX_CHARS = 100000; 
+            // Aumentamos o limite para 130k caracteres (aprox 32k tokens), seguro para Gemini Pro
+            const MAX_CHARS = 130000; 
             
             if (fullText.length <= MAX_CHARS) return fullText;
 
@@ -601,48 +612,61 @@
                 return fullText.substring(0, 30000) + "\n\n...[RESTANTE OMITIDO]...";
             }
 
-            // Para Matérias, Planos e Simulados, precisamos encontrar o CONTEÚDO PROGRAMÁTICO
-            // Estratégia: Busca Inteligente por Palavras-Chave em TODO o texto
+            // Para Matérias, Planos e Simulados: Estratégia "Sanduíche Inteligente"
+            // Garante Início (Contexto) + Fim (Anexos) + Recheio (Palavras-chave)
             
-            // 1. Sempre manter o cabeçalho para contexto (Cargo, Banca, etc)
-            let context = fullText.substring(0, 5000);
-            context += "\n...[INICIO OMITIDO]...\n";
+            const RESERVED_START = 15000; // Cabeçalho, definições iniciais
+            const RESERVED_END = 50000;   // Anexos geralmente estão no final (aumentado para garantir)
+            const DYNAMIC_BUDGET = MAX_CHARS - RESERVED_START - RESERVED_END;
 
-            // 2. Palavras-chave que indicam seções de conteúdo
-            const keywords = [
-                "CONTEÚDO PROGRAMÁTICO", 
-                "PROGRAMA DE PROVA", 
-                "PROGRAMAS DAS PROVAS", 
-                "ANEXO", 
-                "CONHECIMENTOS BÁSICOS", 
-                "CONHECIMENTOS ESPECÍFICOS", 
-                "LÍNGUA PORTUGUESA", 
-                "RACIOCÍNIO LÓGICO",
-                "NOÇÕES DE INFORMÁTICA",
-                "CRONOGRAMA"
+            // 1. Pega Início e Fim garantidos
+            let startText = fullText.substring(0, RESERVED_START);
+            let endText = fullText.substring(fullText.length - RESERVED_END);
+            
+            // 2. Padrões Regex para identificar seções de conteúdo no "meio" do texto
+            const patterns = [
+                // SUPER GENÉRICO para Anexos (Pega "ANEXO 2", "ANEXO II", "ANEXO ÚNICO" seguido de qualquer coisa que pareça título)
+                /ANEXO\s+(?:[IVX]+|\d+|ÚNICO|[A-Z])(?:\s*[-–.]?\s*)?(?:[A-ZÀ-Ú\s]{3,})/gi,
+                
+                // Variações de Conteúdo Programático / Programas de Prova
+                /(?:CONTEÚDO|PROGRAMA)(?:\s+PROGRAMÁTICO)?\s+(?:DA|DAS|DE|DOS)?\s*(?:PROVAS?|AVALIAÇ(?:ÃO|ÕES)|CONCURSO|SELEÇÃO)/gi,
+                
+                // Seções de Conhecimentos
+                /CONHECIMENTOS\s+(?:BÁSICOS|ESPECÍFICOS|GERAIS|FUNDAMENTAIS)/gi,
+                
+                // Matérias comuns que servem como âncora
+                /(?:LÍNGUA|NOÇÕES\s+DE)\s+(?:PORTUGUESA|INFORMÁTICA|DIREITO|ADMINISTRAÇÃO)/gi,
+                /RACIOCÍNIO\s+LÓGICO/gi,
+                
+                // Termos genéricos de estrutura
+                /DISCIPLINAS?|EMENTAS?|COMPONENTES?\s+CURRICULARES?|OBJETOS?\s+DE\s+AVALIAÇÃO|ROTEIRO\s+DE\s+PROVAS?/gi
             ];
             
-            // 3. Encontrar ocorrências
-            let ranges = [];
-            const searchRegion = fullText.toUpperCase();
+            // 3. Encontrar ocorrências usando Regex (apenas na região do meio para não duplicar)
+            // Região de busca: fim do startText até início do endText
+            const searchStart = RESERVED_START;
+            const searchEnd = fullText.length - RESERVED_END;
+            const searchRegion = fullText.substring(searchStart, searchEnd);
             
-            keywords.forEach(kw => {
-                let pos = searchRegion.indexOf(kw);
-                while (pos !== -1) {
-                    // Pega um bloco grande ao redor da palavra-chave (-2k a +20k)
-                    let start = Math.max(0, pos - 2000);
-                    let end = Math.min(fullText.length, pos + 20000);
-                    ranges.push({start, end});
-                    
-                    // Busca próxima ocorrência
-                    pos = searchRegion.indexOf(kw, pos + 5000); // Pula 5k pra não pegar mtas repetidas próximas
-                }
-            });
+            let ranges = [];
+            
+            if (searchEnd > searchStart) {
+                patterns.forEach(regex => {
+                    let match;
+                    regex.lastIndex = 0;
+                    while ((match = regex.exec(searchRegion)) !== null) {
+                        // Debug match
+                        console.log(`SmartContext: Padrão encontrado: "${match[0]}" na posição ${match.index}`);
 
-            // Se não achou nada, usa estratégia antiga (Início + Final)
-            if (ranges.length === 0) {
-                 console.warn("Nenhuma palavra-chave de conteúdo encontrada. Usando estratégia fallback (Final do arquivo).");
-                 return context + fullText.substring(fullText.length - 50000);
+                        // Ajusta índice relativo para absoluto
+                        const absoluteIndex = searchStart + match.index;
+                        
+                        // Pega bloco ao redor (-2k a +25k)
+                        let rStart = Math.max(searchStart, absoluteIndex - 2000);
+                        let rEnd = Math.min(searchEnd, absoluteIndex + 25000);
+                        ranges.push({start: rStart, end: rEnd});
+                    }
+                });
             }
 
             // 4. Mesclar intervalos sobrepostos
@@ -661,32 +685,49 @@
                 merged.push(current);
             }
 
-            // 5. Construir o texto final respeitando o limite
-            let currentLength = context.length;
+            // 5. Construir o "Recheio" respeitando o DYNAMIC_BUDGET
+            let middleContent = "";
+            let currentMiddleLength = 0;
             
             for (let r of merged) {
-                if (currentLength >= MAX_CHARS) break;
+                if (currentMiddleLength >= DYNAMIC_BUDGET) break;
                 
                 let chunk = fullText.substring(r.start, r.end);
                 
-                // Trunca se passar do limite
-                if (currentLength + chunk.length > MAX_CHARS) {
-                     chunk = chunk.substring(0, MAX_CHARS - currentLength);
+                if (currentMiddleLength + chunk.length > DYNAMIC_BUDGET) {
+                     chunk = chunk.substring(0, DYNAMIC_BUDGET - currentMiddleLength);
                 }
                 
-                context += `\n...[Trecho Relevante Detectado ${r.start}-${r.end}]...\n` + chunk;
-                currentLength += chunk.length;
-            }
-            
-            // Adiciona o finalzinho do arquivo também, pois muitas vezes anexos estão lá
-            if (currentLength < MAX_CHARS) {
-                 const remaining = MAX_CHARS - currentLength;
-                 const lastPart = fullText.substring(fullText.length - remaining);
-                 context += "\n...[FINAL DO ARQUIVO]...\n" + lastPart;
+                middleContent += `\n...[Trecho Relevante Detectado ${r.start}-${r.end}]...\n` + chunk;
+                currentMiddleLength += chunk.length;
             }
 
-            console.log(`Texto original: ${fullText.length} chars. Texto Otimizado (SmartContext): ${context.length} chars.`);
-            return context;
+            // Se não achou nada relevante no meio, pega um pedaço central aleatório como fallback
+            if (currentMiddleLength === 0 && searchEnd > searchStart) {
+                 const midPoint = Math.floor((searchStart + searchEnd) / 2);
+                 const fallbackStart = Math.max(searchStart, midPoint - 15000);
+                 const fallbackEnd = Math.min(searchEnd, midPoint + 15000);
+                 middleContent = "\n...[MEIO DO ARQUIVO]...\n" + fullText.substring(fallbackStart, fallbackEnd);
+            }
+
+            // 6. Montagem Final
+            const finalContext = startText + 
+                               "\n...[INICIO OMITIDO]...\n" + 
+                               middleContent + 
+                               "\n...[FINAL OMITIDO]...\n" + 
+                               endText;
+
+            console.log(`SmartContext: Original ${fullText.length} -> Otimizado ${finalContext.length} chars.`);
+            console.log(`Estratégia: Início(${RESERVED_START}) + Fim(${RESERVED_END}) + Meio Detectado.`);
+            
+            // Debug para verificar presença de Anexos
+            if (/ANEXO/i.test(finalContext)) {
+                console.log("SmartContext: Termo 'ANEXO' encontrado no contexto final.");
+            } else {
+                console.warn("SmartContext: ALERTA - Termo 'ANEXO' NÃO encontrado no contexto final!");
+            }
+
+            return finalContext;
         }
 
         // Custom Animation for Progress Bar
@@ -717,6 +758,7 @@
         window.currentEditalText = null;
 
         window.currentEditalData = {};
+        window.currentEditalFirestoreId = null;
 
         // Auto-trigger analysis on file upload
         document.getElementById('fileInput').addEventListener('change', handleFileUpload);
@@ -745,6 +787,7 @@
             document.getElementById('resultadoArea').classList.add('hidden');
             document.getElementById('simuladoArea').classList.add('hidden');
             window.currentEditalData = {}; // Reset Global Data
+            window.currentEditalFirestoreId = null; // Reset Firestore ID
             
             // Show Loading
             const statusDiv = document.getElementById('status');
@@ -791,7 +834,14 @@
 
                 // --- FASE 2: Identificar Matérias ---
                 statusText.innerText = "2/3: Identificando Matérias...";
+                
+                // Debug Visual (Temporário)
+                console.log("Enviando texto para IA (SmartContext)... Tamanho:", window.currentEditalText.length);
+                
                 const materiasData = await chamarBackend('identificar_materias');
+                
+                // Debug Response
+                console.log("Resposta IA (Matérias):", materiasData);
                 
                 // Remove loading placeholder
                 const placeholder = document.getElementById(loadingId);
@@ -807,20 +857,44 @@
                     // Inicializa objeto de conteúdo se não existir
                     window.currentEditalData.conteudo_programatico = {};
                     
-                    for (const materia of materiasData.materias) {
+                    for (const materiaItem of materiasData.materias) {
+                         // Suporte a objeto ou string
+                         const materiaName = typeof materiaItem === 'object' ? materiaItem.nome : materiaItem;
+                         let topicosJaEncontrados = null;
+
+                         // Se já vieram tópicos da etapa anterior (Prompt Otimizado), usa eles!
+                         if (typeof materiaItem === 'object' && materiaItem.topicos && materiaItem.topicos.length > 0) {
+                             // Normaliza tópicos (pode ser string ou objeto {id, assunto})
+                             topicosJaEncontrados = materiaItem.topicos.map(t => t.assunto || t);
+                         }
+
+                         if (topicosJaEncontrados) {
+                             // Já temos os tópicos, apenas atualiza UI e Dados
+                             console.log(`Tópicos de ${materiaName} já identificados na etapa 2.`);
+                             window.currentEditalData.conteudo_programatico[materiaName] = topicosJaEncontrados;
+                             updateMateriaCard(materiaName, topicosJaEncontrados);
+                             
+                             // Salva incrementalmente
+                             if (window.saveEditalToFirestore) {
+                                window.saveEditalToFirestore(window.currentEditalData, window.currentEditalText);
+                             }
+                             continue; // Pula para a próxima matéria sem chamar backend
+                         }
+
+                         // Se não tiver tópicos, chama o backend (Fallback)
                          // Atualiza status visual
-                        document.getElementById('statusText').innerText = `Lendo: ${materia}...`;
+                        document.getElementById('statusText').innerText = `Lendo: ${materiaName}...`;
                         
                         // Busca tópicos da matéria específica
                         try {
-                            const topicosData = await chamarBackend('analisar_topicos_materia', 0, { materia: materia });
+                            const topicosData = await chamarBackend('analisar_topicos_materia', 0, { materia: materiaName });
                             
                             if (topicosData && topicosData.topicos) {
                                 // Atualiza dados globais
-                                window.currentEditalData.conteudo_programatico[materia] = topicosData.topicos;
+                                window.currentEditalData.conteudo_programatico[materiaName] = topicosData.topicos;
                                 
                                 // Atualiza Card na UI
-                                updateMateriaCard(materia, topicosData.topicos);
+                                updateMateriaCard(materiaName, topicosData.topicos);
 
                                 // Salvar Progresso (Materia por Materia)
                                 if (window.saveEditalToFirestore) {
@@ -828,8 +902,8 @@
                                 }
                             }
                         } catch (err) {
-                            console.error(`Erro ao ler matéria ${materia}:`, err);
-                            updateMateriaCard(materia, ["Erro ao ler tópicos desta matéria."]);
+                            console.error(`Erro ao ler matéria ${materiaName}:`, err);
+                            updateMateriaCard(materiaName, ["Erro ao ler tópicos desta matéria."]);
                         }
                     }
                     
@@ -968,8 +1042,11 @@
             const listDiv = document.getElementById('dash-conteudos-list');
             listDiv.innerHTML = ''; // Limpa lista anterior
 
-            materias.forEach(materia => {
-                const safeId = 'materia-' + materia.replace(/[^a-zA-Z0-9]/g, '_');
+            materias.forEach(materiaItem => {
+                // Suporte a objeto ou string (Híbrido)
+                const materiaName = typeof materiaItem === 'object' ? materiaItem.nome : materiaItem;
+                
+                const safeId = 'materia-' + materiaName.replace(/[^a-zA-Z0-9]/g, '_');
                 const card = document.createElement('div');
                 card.id = safeId;
                 card.className = "p-4 rounded-xl bg-gray-800/30 border border-gray-700/50";
@@ -977,7 +1054,7 @@
                 // Skeleton Loading State
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-2">
-                        <h4 class="text-blue-400 font-semibold">${materia}</h4>
+                        <h4 class="text-blue-400 font-semibold">${materiaName}</h4>
                         <div class="w-4 h-4 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
                     </div>
                     <div class="space-y-2 animate-pulse">
@@ -1167,22 +1244,32 @@
                         console.error("Invalid JSON String (snippet):", jsonStr.substring(0, 500) + "...");
                         
                         // Fallback: Tentar corrigir JSON quebrado (comum em streams interrompidas)
-                        // Ex: falta fechar aspas ou chaves no final
                         try {
-                            // Tenta fechar aspas se estiver aberto
+                            // 1. Tenta fechar aspas se estiver aberto
                             if ((jsonStr.match(/"/g) || []).length % 2 !== 0) {
                                 jsonStr += '"';
                             }
-                             // Tenta fechar chaves se faltar
-                             const openBraces = (jsonStr.match(/{/g) || []).length;
-                             const closeBraces = (jsonStr.match(/}/g) || []).length;
-                             for(let i=0; i < (openBraces - closeBraces); i++) {
-                                 jsonStr += "}";
-                             }
+                            
+                            // 2. Conta aberturas e fechamentos
+                            const openBrackets = (jsonStr.match(/\[/g) || []).length;
+                            const closeBrackets = (jsonStr.match(/\]/g) || []).length;
+                            const openBraces = (jsonStr.match(/{/g) || []).length;
+                            const closeBraces = (jsonStr.match(/}/g) || []).length;
+
+                            // 3. Fecha arrays (prioridade, pois geralmente estão dentro de objetos)
+                            for(let i=0; i < (openBrackets - closeBrackets); i++) {
+                                jsonStr += "]";
+                            }
+
+                            // 4. Fecha objetos
+                            for(let i=0; i < (openBraces - closeBraces); i++) {
+                                jsonStr += "}";
+                            }
+
                              data = JSON.parse(jsonStr);
                              console.warn("JSON recuperado automaticamente!");
                         } catch (e2) {
-                            throw new Error("A IA retornou uma resposta inválida. Tente novamente.");
+                            throw new Error("A IA retornou uma resposta inválida ou incompleta. Tente novamente.");
                         }
                     }
 
