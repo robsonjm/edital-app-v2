@@ -64,16 +64,19 @@
                 }
             ]
         }
-    </script>
     <script>
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        
-        // Supress PDF.js Font warnings
-        const origConsoleWarn = console.warn;
-        console.warn = function(...args) {
-             if(args[0] && typeof args[0] === 'string' && args[0].includes('Warning: TT:')) return;
-             origConsoleWarn.apply(console, args);
-        };
+        // Configuração antecipada do Worker do PDF.js
+        // Define ANTES de qualquer carregamento de arquivo
+        if (typeof pdfjsLib !== 'undefined') {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        } else {
+            // Caso o script ainda não tenha carregado (improvável pois é síncrono no head, mas seguro)
+            window.onload = function() {
+                if (typeof pdfjsLib !== 'undefined') {
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                }
+            };
+        }
     </script>
     <script type="importmap">
       {
@@ -1199,12 +1202,23 @@
                         if (done) break;
                         const chunk = decoder.decode(value, { stream: true });
                         fullText += chunk;
+                        
+                        // Debug progressivo (opcional, para ver se trava)
+                        // console.log(`Stream: recebido chunk de ${chunk.length} bytes. Total: ${fullText.length}`);
                     }
+                    
+                    console.log(`Leitura do stream concluída. Total bytes: ${fullText.length}`);
 
                     // Clean markdown JSON if present
                     let jsonStr = fullText;
                     
-                    console.log("Raw Response:", jsonStr); // Debug Log
+                    console.log("Raw Response (Length):", jsonStr.length); // Debug Log Length
+                    if (jsonStr.length < 500) console.log("Raw Response Preview:", jsonStr);
+
+                    // Verifica se a resposta está vazia
+                    if (!jsonStr || jsonStr.trim().length === 0) {
+                        throw new Error("A IA retornou uma resposta vazia. Tente novamente.");
+                    }
 
                     // Remove potential whitespace/newlines from start
                     jsonStr = jsonStr.trim();
