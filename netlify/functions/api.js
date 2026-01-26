@@ -234,11 +234,11 @@ ${texto_edital}
 
     // --- Call Gemini API ---
     try {
-        console.log("Iniciando geração com modelo gemini-1.5-pro-latest...");
+        console.log("Iniciando geração com modelo gemini-1.5-pro...");
         
-        // Correção: Usando o nome correto do modelo para o SDK @google/genai
+        // Correção: Usando o nome oficial do modelo (o alias 'gemini-1.5-pro' aponta para a versão estável mais recente)
         const result = await ai.models.generateContentStream({
-            model: "gemini-1.5-pro-latest",
+            model: "gemini-1.5-pro",
             contents: [
                 {
                     role: "user",
