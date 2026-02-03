@@ -277,7 +277,7 @@ export default function App() {
         ? [{ parts: [{ text: "Analise detalhadamente este edital e extraia as informações estruturadas." }, { inlineData: { mimeType: inputData.mimeType, data: inputData.base64 } }] }]
         : [{ parts: [{ text: `Analise este texto de edital:\n\n${inputData.text}` }] }];
 
-      const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+      const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents, systemInstruction: { parts: [{ text: systemPrompt }] }, generationConfig })
@@ -314,7 +314,7 @@ export default function App() {
     try {
       const apiKey = GEMINI_API_KEY;
       const systemPrompt = `Mentor de Concursos. Gere Guia de Estudos para "${discipline}": Resumo, Bibliografia e Dicas. JSON estrito.`;
-      const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+      const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -346,7 +346,7 @@ export default function App() {
     try {
       const apiKey = GEMINI_API_KEY;
       const context = `Disciplina: ${studyContent.discipline}. Dúvida do aluno: "${userQuery}". Explique tecnicamente para concurso.`;
-      const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+      const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contents: [{ parts: [{ text: context }] }] })
@@ -386,7 +386,7 @@ export default function App() {
       const apiKey = GEMINI_API_KEY;
       const qCount = mode === 'exam' ? 10 : 5;
       const systemPrompt = `Gere ${qCount} questões de concurso para: ${edital.disciplinas.join(", ")}. Responda em JSON.`;
-      const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+      const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
