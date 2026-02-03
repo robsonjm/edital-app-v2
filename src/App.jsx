@@ -40,8 +40,8 @@ import {
   TrendingUp,
   FileSearch
 } from 'lucide-react';
-import { Card } from './components/ui/Card';
-import { Button } from './components/ui/Button';
+import { Card } from './components/ui/Card.jsx';
+import { Button } from './components/ui/Button.jsx';
 import { initializeApp } from 'firebase/app';
 import { getAnalytics } from "firebase/analytics";
 import { 

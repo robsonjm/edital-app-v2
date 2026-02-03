@@ -1,6 +1,6 @@
 import React from 'react';
 import SEO from '../components/SEO';
-import { Card } from '../components/ui/Card';
+import { Card } from '../components/ui/Card.jsx';
 import { ChevronLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
