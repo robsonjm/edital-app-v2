@@ -1,4 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Routes, Route } from 'react-router-dom';
+import SEO from './components/SEO';
+import CookieConsent from './components/CookieConsent';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfService from './pages/TermsOfService';
 import { 
   FileText, 
   BookOpen, 
@@ -245,7 +250,7 @@ const Button = ({ children, onClick, variant = 'primary', className = "", disabl
 
 // --- MAIN APP ---
 
-export default function App() {
+const MainApp = () => {
   const [user, setUser] = useState(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
   const [view, setView] = useState('dashboard'); 
@@ -881,11 +886,23 @@ export default function App() {
   }
 
   if (!user) {
-    return <LoginView />;
+    return (
+      <>
+        <SEO 
+          title="Login" 
+          description="Acesse sua conta no Edital Master para criar planos de estudo personalizados com IA." 
+        />
+        <LoginView />
+      </>
+    );
   }
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-100">
+      <SEO 
+        title="Dashboard" 
+        description="Gerencie seus editais, acompanhe seu progresso e estude com inteligência artificial."
+      />
       <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b h-16 sticky top-0 z-50 shadow-sm border-slate-100 dark:border-slate-800">
         <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('dashboard')}>
@@ -933,5 +950,18 @@ export default function App() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <>
+      <CookieConsent />
+      <Routes>
+        <Route path="/privacidade" element={<PrivacyPolicy />} />
+        <Route path="/termos" element={<TermsOfService />} />
+        <Route path="/*" element={<MainApp />} />
+      </Routes>
+    </>
   );
 }

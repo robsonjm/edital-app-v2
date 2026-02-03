@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /study-center
+Disallow: /history
+Disallow: /analyze
+
+Sitemap: https://editalmaster.com/sitemap.xml
