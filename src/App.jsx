@@ -60,17 +60,16 @@ import {
 // --- FIREBASE CONFIG ---
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-  apiKey: "AIzaSyDRISQYFZ7sQuGpf4ImqW6hecP0zEnRyFY",
-  authDomain: "concurseirorm-de747.firebaseapp.com",
-  projectId: "concurseirorm-de747",
-  storageBucket: "concurseirorm-de747.firebasestorage.app",
-  messagingSenderId: "597777186067",
-  appId: "1:597777186067:web:f475a5c33062de5f926ee6",
-  measurementId: "G-VG1N8HQGHG"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
-// TODO: Replace with your Gemini API Key
-const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY_HERE";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
