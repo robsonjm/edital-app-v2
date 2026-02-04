@@ -36,7 +36,12 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
       });
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      // Cleanup script to allow re-injection on next mount
+      const s = document.getElementById(scriptId);
+      if (s) s.remove();
+    };
   }, [isOpen]);
 
   const handleClose = () => {

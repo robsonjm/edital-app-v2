@@ -231,6 +231,10 @@ const LoginView = () => {
               {isSignUp ? 'Fazer Login' : 'Criar Conta'}
             </button>
           </div>
+          
+          <div className="mt-8">
+             <AdsterraNativeBanner />
+          </div>
         </Card>
       </div>
     );
@@ -255,6 +259,28 @@ const MainApp = () => {
   
   // Adsterra Social Overlay State
   const [adOverlay, setAdOverlay] = useState({ isOpen: false, onComplete: null });
+
+  // Popunder Management (Inject only if User is Logged In AND Not Premium)
+  useEffect(() => {
+    const scriptId = 'adsterra-popunder';
+    const existingScript = document.getElementById(scriptId);
+
+    // Only inject if user is logged in AND not premium
+    if (user && !isPremium) {
+      if (!existingScript) {
+        const script = document.createElement('script');
+        script.id = scriptId;
+        script.src = "https://controlslaverystuffing.com/f5/64/d9/f564d94e9601b5005af8479903a53392.js";
+        script.async = true;
+        document.body.appendChild(script);
+      }
+    } else {
+      // Remove if exists (clean up for premium or logout)
+      if (existingScript) {
+        existingScript.remove();
+      }
+    }
+  }, [user, isPremium]);
 
   const triggerAdBeforeAction = (callback) => {
     if (isPremium) {
