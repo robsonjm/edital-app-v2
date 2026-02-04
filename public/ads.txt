@@ -1,0 +1,3 @@
+google.com, pub-0516349490877138, DIRECT, f08c47fec0942fa0
+# Adsterra ads.txt
+# Coloque aqui a linha fornecida pelo Adsterra (ex: adsterra.com, pub-XXXX, DIRECT, XXXXX)

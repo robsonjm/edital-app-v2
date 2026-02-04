@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
 import SEO from './components/SEO';
 import CookieConsent from './components/CookieConsent';
+import { Footer } from './components/Footer.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
+import AdsterraNativeBanner from './components/AdsterraNativeBanner.jsx';
 import { 
   FileText, 
   BookOpen, 
@@ -38,7 +40,9 @@ import {
   Send,
   History,
   TrendingUp,
-  FileSearch
+  FileSearch,
+  Newspaper,
+  Globe
 } from 'lucide-react';
 import { Card } from './components/ui/Card.jsx';
 import { Button } from './components/ui/Button.jsx';
@@ -555,12 +559,18 @@ const MainApp = () => {
           <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Meus Editais</h1>
           <p className="text-slate-500">Transforme editais burocráticos em planos de estudo.</p>
         </div>
-        <div className="flex gap-2 w-full sm:w-auto">
+        <div className="flex gap-2 w-full sm:w-auto flex-wrap">
+          <Button variant="secondary" onClick={() => setView('news')} className="flex-1 sm:flex-none">
+            <Newspaper className="w-4 h-4 text-blue-600" /> News
+          </Button>
           <Button variant="outline" onClick={() => setView('history')} className="flex-1 sm:flex-none"><History className="w-4 h-4" /> Histórico</Button>
           <Button onClick={() => setView('analyze')} className="flex-1 sm:flex-none"><Plus className="w-4 h-4" /> Novo Edital</Button>
           <Button variant="ghost" onClick={handleLogout} className="flex-1 sm:flex-none text-red-500 hover:bg-red-50 hover:text-red-600"><X className="w-4 h-4" /> Sair</Button>
         </div>
       </div>
+      
+      <AdsterraNativeBanner />
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {editais.map(e => {
           const lastS = simuladosHistory.find(s => s.editalId === e.id);
@@ -609,6 +619,148 @@ const MainApp = () => {
       </div>
     </div>
   );
+
+  const NewsView = () => {
+    const [aiTrends, setAiTrends] = useState(null);
+    const [loadingTrends, setLoadingTrends] = useState(false);
+
+    const mockNews = [
+      {
+        id: 1,
+        title: "Concurso Nacional Unificado (CNU)",
+        date: "03 Fev 2026",
+        summary: "Divulgada a previsão para a segunda edição do CNU. Órgãos federais já começam a manifestar interesse em participar do novo certame unificado.",
+        tag: "Federal"
+      },
+      {
+        id: 2,
+        title: "Receita Federal 2026",
+        date: "01 Fev 2026",
+        summary: "Fontes indicam solicitação de novo edital para Auditor e Analista ainda este ano. Déficit de servidores impulsiona o pedido.",
+        tag: "Fiscal"
+      },
+      {
+        id: 3,
+        title: "Polícia Federal Administrativa",
+        date: "30 Jan 2026",
+        summary: "Movimentações para reestruturação da carreira administrativa da PF podem acelerar a publicação de novo edital.",
+        tag: "Policial"
+      },
+       {
+        id: 4,
+        title: "Tecnologia em Concursos",
+        date: "28 Jan 2026",
+        summary: "Bancas examinadoras investem em sistemas anti-fraude baseados em IA para provas digitais e híbridas.",
+        tag: "Tecnologia"
+      }
+    ];
+
+    const generateTrends = async () => {
+      setLoadingTrends(true);
+      try {
+        const apiKey = GEMINI_API_KEY;
+        const systemPrompt = "Você é um jornalista especializado em concursos públicos. Liste 3 tendências quentes ou previsões para o mundo dos concursos no Brasil para os próximos meses. Seja direto, otimista e informativo. Use bullet points.";
+        
+        const response = await fetchWithRetry(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              contents: [{ parts: [{ text: "Quais as tendências de concursos agora?" }] }], 
+              systemInstruction: { parts: [{ text: systemPrompt }] }
+            })
+        });
+        const result = await response.json();
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        setAiTrends(text);
+      } catch (err) {
+        console.error(err);
+        setAiTrends("Não foi possível carregar as tendências no momento. Tente novamente mais tarde.");
+      } finally {
+        setLoadingTrends(false);
+      }
+    };
+
+    return (
+      <div className="max-w-5xl mx-auto py-10 animate-in fade-in">
+        <button onClick={() => setView('dashboard')} className="text-slate-400 hover:text-blue-600 flex items-center gap-1 text-sm mb-8 font-bold">
+            <ChevronLeft className="w-4 h-4" /> Voltar ao Painel
+        </button>
+        
+        <header className="mb-10">
+            <div className="flex items-center gap-3 text-blue-600 font-black uppercase text-[10px] tracking-widest mb-2">
+                <Globe className="w-4 h-4" /> Atualizações & Insights
+            </div>
+            <h1 className="text-4xl font-black leading-tight text-slate-900 dark:text-white tracking-tight">News Center</h1>
+            <p className="text-slate-500 mt-2">Fique por dentro do mundo dos concursos públicos.</p>
+        </header>
+
+        <AdsterraNativeBanner />
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column: Latest News */}
+            <div className="lg:col-span-2 space-y-6">
+                <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-white">
+                    <Newspaper className="w-5 h-5 text-blue-500" /> Últimas Notícias
+                </h3>
+                <div className="grid gap-4">
+                    {mockNews.map(news => (
+                        <Card key={news.id} className="p-6 hover:border-blue-300 transition-all group">
+                            <div className="flex justify-between items-start mb-3">
+                                <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider">{news.tag}</span>
+                                <span className="text-slate-400 text-xs font-medium">{news.date}</span>
+                            </div>
+                            <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-600 transition-colors">{news.title}</h4>
+                            <p className="text-slate-500 text-sm leading-relaxed">{news.summary}</p>
+                        </Card>
+                    ))}
+                </div>
+            </div>
+
+            {/* Right Column: AI Trends */}
+            <div className="space-y-6">
+                <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-white">
+                    <TrendingUp className="w-5 h-5 text-purple-500" /> Radar de Tendências
+                </h3>
+                <Card className="p-6 bg-slate-900 text-white border-none shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-3 opacity-10"><Brain className="w-24 h-24" /></div>
+                    <p className="text-slate-400 text-sm mb-6 relative z-10">
+                        Use a Inteligência Artificial para analisar o cenário atual e prever oportunidades.
+                    </p>
+                    
+                    {!aiTrends ? (
+                        <Button 
+                            variant="primary" 
+                            className="w-full bg-purple-600 hover:bg-purple-700 border-none relative z-10"
+                            onClick={generateTrends}
+                            loading={loadingTrends}
+                        >
+                            <Sparkles className="w-4 h-4 mr-2" /> Gerar Análise de Mercado
+                        </Button>
+                    ) : (
+                        <div className="animate-in fade-in slide-in-from-bottom-4 relative z-10">
+                            <div className="text-sm text-slate-300 space-y-2 whitespace-pre-wrap leading-relaxed bg-white/5 p-4 rounded-xl border border-white/10">
+                                {aiTrends}
+                            </div>
+                            <Button 
+                                variant="ghost" 
+                                className="w-full mt-4 text-slate-300 hover:text-white hover:bg-white/10"
+                                onClick={generateTrends}
+                                loading={loadingTrends}
+                            >
+                                <RefreshCw className="w-4 h-4 mr-2" /> Atualizar Análise
+                            </Button>
+                        </div>
+                    )}
+                </Card>
+
+                <div className="p-4 rounded-xl bg-orange-50 border border-orange-100 text-orange-800 text-xs font-medium leading-relaxed">
+                    <strong>Nota:</strong> As notícias acima são demonstrativas. A funcionalidade de "Radar de Tendências" utiliza IA para gerar insights baseados em dados gerais.
+                </div>
+            </div>
+        </div>
+      </div>
+    );
+  };
 
   const StudyCenterView = () => (
     <div className="max-w-5xl mx-auto py-10 space-y-12 animate-in slide-in-from-bottom-4">
@@ -868,18 +1020,21 @@ const MainApp = () => {
           title="Login" 
           description="Acesse sua conta no Edital Master para criar planos de estudo personalizados com IA." 
         />
-        <LoginView />
+        <div className="flex flex-col min-h-screen">
+            <LoginView />
+            <Footer />
+        </div>
       </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-100">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 selection:bg-blue-100 flex flex-col">
       <SEO 
         title="Dashboard" 
         description="Gerencie seus editais, acompanhe seu progresso e estude com inteligência artificial."
       />
-      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b h-16 sticky top-0 z-50 shadow-sm border-slate-100 dark:border-slate-800">
+      <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b h-16 sticky top-0 z-50 shadow-sm border-slate-100 dark:border-slate-800 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('dashboard')}>
             <div className="bg-blue-600 p-1.5 rounded-xl shadow-lg transition-transform hover:scale-105"><Brain className="w-6 h-6 text-white" /></div>
@@ -896,7 +1051,7 @@ const MainApp = () => {
           )}
         </div>
       </header>
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-7xl mx-auto px-4 py-8 flex-grow w-full">
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-700 font-bold shadow-sm animate-in fade-in slide-in-from-top-4">
             <AlertTriangle className="w-6 h-6 shrink-0" />
@@ -912,7 +1067,9 @@ const MainApp = () => {
         {view === 'library-index' && <LibraryIndexView />}
         {view === 'library-viewer' && <LibraryViewer />}
         {view === 'quiz-interface' && <QuizInterfaceView />}
+        {view === 'news' && <NewsView />}
       </main>
+      <Footer />
       {isProcessing && (
         <div className="fixed inset-0 bg-white/70 dark:bg-slate-950/70 backdrop-blur-2xl z-[100] flex flex-col items-center justify-center">
           <div className="relative mb-6">
@@ -933,11 +1090,13 @@ export default function App() {
   return (
     <>
       <CookieConsent />
-      <Routes>
-        <Route path="/privacidade" element={<PrivacyPolicy />} />
-        <Route path="/termos" element={<TermsOfService />} />
-        <Route path="/*" element={<MainApp />} />
-      </Routes>
+      <div className="flex flex-col min-h-screen">
+        <Routes>
+            <Route path="/privacidade" element={<div className="flex flex-col min-h-screen"><PrivacyPolicy /><Footer /></div>} />
+            <Route path="/termos" element={<div className="flex flex-col min-h-screen"><TermsOfService /><Footer /></div>} />
+            <Route path="/*" element={<MainApp />} />
+        </Routes>
+      </div>
     </>
   );
 }
