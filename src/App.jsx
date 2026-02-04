@@ -60,8 +60,14 @@ import {
   query,
   addDoc,
   where,
-  orderBy
+  orderBy,
+  updateDoc
 } from 'firebase/firestore';
+import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
+
+// Initialize Mercado Pago
+initMercadoPago('TEST-fbe92fa7-f9e7-4c93-9788-04b8881ea018');
+
 import { 
   getAuth, 
   signInAnonymously, 
@@ -243,15 +249,94 @@ const MainApp = () => {
   const [deepenedTopics, setDeepenedTopics] = useState([]); 
   const [simuladosHistory, setSimuladosHistory] = useState([]);
   const [error, setError] = useState(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [preferenceId, setPreferenceId] = useState(null);
   
   // Adsterra Social Overlay State
   const [adOverlay, setAdOverlay] = useState({ isOpen: false, onComplete: null });
 
   const triggerAdBeforeAction = (callback) => {
+    if (isPremium) {
+      callback();
+      return;
+    }
     setAdOverlay({
       isOpen: true,
       onComplete: callback
     });
+  };
+
+  // Sync Premium Status
+  useEffect(() => {
+    if (!user) return;
+    // Ensure we are listening to the user document in the 'users' collection at root
+    // Note: The previous code used 'artifacts/{appId}/users/{uid}/...' for data, 
+    // but for user profile we should use a root 'users' collection or similar.
+    // I will use 'users' collection at root.
+    const unsubUser = onSnapshot(doc(db, 'users', user.uid), (docSnapshot) => {
+      if (docSnapshot.exists()) {
+        setIsPremium(docSnapshot.data().isPremium === true);
+      }
+    });
+    return () => unsubUser();
+  }, [user]);
+
+  // Handle Payment Return
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const status = urlParams.get('status');
+    const paymentId = urlParams.get('payment_id');
+    
+    if (user && status === 'approved' && paymentId) {
+      const updateUserPremium = async () => {
+        try {
+          const userRef = doc(db, 'users', user.uid);
+          await setDoc(userRef, { isPremium: true, lastPaymentId: paymentId }, { merge: true });
+          // Clean URL
+          window.history.replaceState({}, document.title, window.location.pathname);
+          alert("Pagamento confirmado! Anúncios removidos.");
+        } catch (error) {
+          console.error("Error updating premium status:", error);
+        }
+      };
+      updateUserPremium();
+    }
+  }, [user]);
+
+  const handlePremiumPurchase = async () => {
+    try {
+      const response = await fetch("https://api.mercadopago.com/checkout/preferences", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer TEST-456420055054562-120507-744484aee1f9d3d51bdd16d520b3e2b2-93943184`
+        },
+        body: JSON.stringify({
+          items: [
+            {
+              title: "Edital Master - Sem Anúncios (Vitalício)",
+              quantity: 1,
+              currency_id: "BRL",
+              unit_price: 9.90
+            }
+          ],
+          back_urls: {
+            success: window.location.href,
+            failure: window.location.href,
+            pending: window.location.href
+          },
+          auto_return: "approved"
+        })
+      });
+
+      const data = await response.json();
+      if (data.id) {
+        setPreferenceId(data.id);
+      }
+    } catch (error) {
+      console.error(error);
+      alert("Erro ao iniciar pagamento.");
+    }
   };
 
   useEffect(() => {
@@ -1047,9 +1132,21 @@ const MainApp = () => {
       />
       <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b h-16 sticky top-0 z-50 shadow-sm border-slate-100 dark:border-slate-800 flex-shrink-0">
         <div className="max-w-7xl mx-auto px-4 h-full flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('dashboard')}>
-            <div className="bg-blue-600 p-1.5 rounded-xl shadow-lg transition-transform hover:scale-105"><Brain className="w-6 h-6 text-white" /></div>
-            <span className="text-2xl font-black tracking-tighter italic uppercase">Edital<span className="text-blue-600">Master</span></span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('dashboard')}>
+              <div className="bg-blue-600 p-1.5 rounded-xl shadow-lg transition-transform hover:scale-105"><Brain className="w-6 h-6 text-white" /></div>
+              <span className="text-2xl font-black tracking-tighter italic uppercase">Edital<span className="text-blue-600">Master</span></span>
+            </div>
+            {!isPremium && (
+              <button 
+                onClick={handlePremiumPurchase}
+                className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white text-xs font-bold py-1.5 px-3 rounded-full shadow-md transition-transform hover:scale-105 flex items-center gap-1 animate-pulse"
+              >
+                <span className="hidden sm:inline">Sem Anúncios</span>
+                <span className="sm:hidden">Premium</span>
+                <Zap className="w-3 h-3 fill-current" />
+              </button>
+            )}
           </div>
           {user && (
             <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-500 border-2 border-white dark:border-slate-700 shadow-sm transition-transform hover:scale-110 overflow-hidden" title={user.displayName || user.email}>
@@ -1086,6 +1183,28 @@ const MainApp = () => {
         onComplete={adOverlay.onComplete} 
         onClose={() => setAdOverlay(prev => ({ ...prev, isOpen: false }))} 
       />
+      {preferenceId && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
+            <button 
+              onClick={() => setPreferenceId(null)} 
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <Zap className="w-6 h-6 text-yellow-500 fill-current" />
+              Premium Vitalício
+            </h3>
+            <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+              Remova todos os anúncios e apoie o desenvolvimento do Edital Master por apenas <strong className="text-slate-900 dark:text-white">R$ 9,90</strong> (pagamento único).
+            </p>
+            <div id="wallet_container">
+              <Wallet initialization={{ preferenceId: preferenceId }} customization={{ texts:{ valueProp: 'smart_option'}}} />
+            </div>
+          </div>
+        </div>
+      )}
       {isProcessing && (
         <div className="fixed inset-0 bg-white/70 dark:bg-slate-950/70 backdrop-blur-2xl z-[100] flex flex-col items-center justify-center">
           <div className="relative mb-6">
