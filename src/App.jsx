@@ -6,6 +6,7 @@ import { Footer } from './components/Footer.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import AdsterraNativeBanner from './components/AdsterraNativeBanner.jsx';
+import AdsterraSocialOverlay from './components/AdsterraSocialOverlay.jsx';
 import { 
   FileText, 
   BookOpen, 
@@ -242,6 +243,16 @@ const MainApp = () => {
   const [deepenedTopics, setDeepenedTopics] = useState([]); 
   const [simuladosHistory, setSimuladosHistory] = useState([]);
   const [error, setError] = useState(null);
+  
+  // Adsterra Social Overlay State
+  const [adOverlay, setAdOverlay] = useState({ isOpen: false, onComplete: null });
+
+  const triggerAdBeforeAction = (callback) => {
+    setAdOverlay({
+      isOpen: true,
+      onComplete: callback
+    });
+  };
 
   useEffect(() => {
     console.log("Gemini API Key loaded:", GEMINI_API_KEY ? GEMINI_API_KEY.substring(0, 10) + "..." : "undefined");
@@ -776,13 +787,13 @@ const MainApp = () => {
           <p className="text-slate-500 text-sm mb-8 leading-relaxed">Resumos teóricos e bibliografias personalizadas.</p>
           <div className="text-emerald-600 font-bold text-xs uppercase tracking-widest flex items-center gap-2">Abrir Conteúdos <ChevronRight className="w-4 h-4" /></div>
         </Card>
-        <Card className="p-8 group hover:border-blue-500" onClick={() => startStudySession(selectedEdital, 'quiz')}>
+        <Card className="p-8 group hover:border-blue-500" onClick={() => triggerAdBeforeAction(() => startStudySession(selectedEdital, 'quiz'))}>
           <div className="w-14 h-14 bg-blue-100 text-blue-600 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110"><Brain className="w-8 h-8" /></div>
           <h3 className="text-2xl font-bold mb-3 tracking-tight">Prática Guiada</h3>
           <p className="text-slate-500 text-sm mb-8 leading-relaxed">Fixação imediata com dicas da mentoria.</p>
           <div className="text-blue-600 font-bold text-xs uppercase tracking-widest flex items-center gap-2">Iniciar Agora <ChevronRight className="w-4 h-4" /></div>
         </Card>
-        <Card className="p-8 group hover:border-indigo-600" onClick={() => startStudySession(selectedEdital, 'exam')}>
+        <Card className="p-8 group hover:border-indigo-600" onClick={() => triggerAdBeforeAction(() => startStudySession(selectedEdital, 'exam'))}>
           <div className="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110"><Clock className="w-8 h-8" /></div>
           <h3 className="text-2xl font-bold mb-3 tracking-tight">Simulado</h3>
           <p className="text-slate-500 text-sm mb-8 leading-relaxed">Avaliação real de prova com tempo cronometrado.</p>
@@ -930,7 +941,7 @@ const MainApp = () => {
           </div>
         )}
         <div onClick={() => fileInputRef.current?.click()} className="border-4 border-dashed rounded-3xl p-12 text-center cursor-pointer transition-all hover:border-blue-400 bg-slate-50 dark:bg-slate-900/50 mb-6">
-          <input type="file" ref={fileInputRef} onChange={(e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => handleAnalyze({ type: 'file', mimeType: file.type, base64: reader.result.split(',')[1] }); reader.readAsDataURL(file); } }} className="hidden" accept=".pdf" />
+          <input type="file" ref={fileInputRef} onChange={(e) => { const file = e.target.files[0]; if (file) { const reader = new FileReader(); reader.onload = () => triggerAdBeforeAction(() => handleAnalyze({ type: 'file', mimeType: file.type, base64: reader.result.split(',')[1] })); reader.readAsDataURL(file); } }} className="hidden" accept=".pdf" />
           <Upload className="w-10 h-10 text-slate-300 mx-auto mb-4" />
           <p className="font-bold text-slate-600 dark:text-slate-400">Anexar Edital PDF</p>
           <p className="text-[10px] text-slate-400 mt-2 italic">A IA identificará as matérias e datas automaticamente.</p>
@@ -941,7 +952,7 @@ const MainApp = () => {
           <div className="flex-grow h-px bg-slate-100"></div>
         </div>
         <textarea className="w-full h-32 p-4 rounded-2xl border bg-slate-50 dark:bg-slate-900 mb-4 outline-none text-sm resize-none focus:ring-2 focus:ring-blue-500" placeholder="Cole aqui o conteúdo programático do concurso para maior precisão..." value={text} onChange={(e) => setText(e.target.value)} />
-        <Button className="w-full py-5 text-xl font-black rounded-2xl shadow-lg shadow-blue-200 dark:shadow-none" onClick={() => handleAnalyze({ type: 'text', text })} loading={isProcessing}>Iniciar Análise</Button>
+        <Button className="w-full py-5 text-xl font-black rounded-2xl shadow-lg shadow-blue-200 dark:shadow-none" onClick={() => triggerAdBeforeAction(() => handleAnalyze({ type: 'text', text }))} loading={isProcessing}>Iniciar Análise</Button>
       </Card>
     );
   };
@@ -1000,7 +1011,7 @@ const MainApp = () => {
       <button onClick={() => setView('study-center')} className="text-slate-400 hover:text-blue-600 flex items-center gap-1 text-sm mb-8 font-bold"><ChevronLeft className="w-4 h-4" /> Voltar</button>
       <div className="mb-10"><h2 className="text-3xl font-black mb-2">Biblioteca do Edital</h2><p className="text-slate-500 font-medium">Selecione uma matéria para acessar o resumo teórico e tirar dúvidas.</p></div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {selectedEdital?.disciplinas?.map((d, i) => (<button key={i} onClick={() => generateStudyContent(d)} className="p-5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-left flex items-center justify-between hover:border-emerald-500 transition-all group shadow-sm"><div className="flex items-center gap-4"><div className="w-10 h-10 bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600"><BookMarked className="w-5 h-5" /></div><span className="font-bold text-slate-700 dark:text-slate-200 text-sm">{d}</span></div><ChevronRight className="w-4 h-4 text-slate-300" /></button>))}
+        {selectedEdital?.disciplinas?.map((d, i) => (<button key={i} onClick={() => triggerAdBeforeAction(() => generateStudyContent(d))} className="p-5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-left flex items-center justify-between hover:border-emerald-500 transition-all group shadow-sm"><div className="flex items-center gap-4"><div className="w-10 h-10 bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600"><BookMarked className="w-5 h-5" /></div><span className="font-bold text-slate-700 dark:text-slate-200 text-sm">{d}</span></div><ChevronRight className="w-4 h-4 text-slate-300" /></button>))}
       </div>
     </div>
   );
@@ -1070,6 +1081,11 @@ const MainApp = () => {
         {view === 'news' && <NewsView />}
       </main>
       <Footer />
+      <AdsterraSocialOverlay 
+        isOpen={adOverlay.isOpen} 
+        onComplete={adOverlay.onComplete} 
+        onClose={() => setAdOverlay(prev => ({ ...prev, isOpen: false }))} 
+      />
       {isProcessing && (
         <div className="fixed inset-0 bg-white/70 dark:bg-slate-950/70 backdrop-blur-2xl z-[100] flex flex-col items-center justify-center">
           <div className="relative mb-6">
