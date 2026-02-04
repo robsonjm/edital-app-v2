@@ -785,6 +785,12 @@ const MainApp = () => {
           );
         })}
       </div>
+
+      {!isPremium && (
+        <div className="mt-8">
+          <AdsterraNativeBanner />
+        </div>
+      )}
     </div>
   );
 

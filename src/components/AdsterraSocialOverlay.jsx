@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
-import AdsterraNativeBanner from './AdsterraNativeBanner';
+// import AdsterraNativeBanner from './AdsterraNativeBanner';
 
 const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
   const [timeLeft, setTimeLeft] = useState(10);
@@ -90,9 +90,9 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
           )}
         </div>
 
-        {/* Native Banner Fallback/Placement */}
-        <div className="w-full max-w-4xl">
-           <AdsterraNativeBanner />
+        {/* Social Bar Interstitial Container - The script will inject the ad automatically */}
+        <div className="w-full h-full flex items-center justify-center text-slate-300 text-sm">
+           <p>Carregando anúncio...</p>
         </div>
         
         <p className="text-xs text-slate-400 mt-4">Publicidade</p>
