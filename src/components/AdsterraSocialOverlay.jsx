@@ -19,6 +19,7 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
       script.id = scriptId;
       script.src = "https://controlslaverystuffing.com/6f/8c/2f/6f8c2f808c585dbdb3bbbd5c5307aa4a.js";
       script.async = true;
+      script.type = 'text/javascript';
       script.setAttribute('data-cfasync', 'false');
       document.body.appendChild(script);
     }
@@ -54,8 +55,8 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-2xl p-8 text-center border border-slate-200 dark:border-slate-700 relative overflow-hidden">
+    <div className="fixed inset-0 z-[50] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 transition-all duration-300">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center relative overflow-hidden animate-fade-in-up">
         
         {/* Progress Bar */}
         <div className="absolute top-0 left-0 h-1 bg-blue-600 transition-all duration-1000 ease-linear" style={{ width: `${((5 - timeLeft) / 5) * 100}%` }}></div>
