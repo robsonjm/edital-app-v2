@@ -260,11 +260,18 @@ const MainApp = () => {
   // Adsterra Social Overlay State
   const [adOverlay, setAdOverlay] = useState({ isOpen: false, onComplete: null });
 
-  // Popunder Management (Inject only if User is Logged In AND Not Premium)
+  // Popunder Management (DISABLED TEMPORARILY)
   useEffect(() => {
     const scriptId = 'adsterra-popunder';
     const existingScript = document.getElementById(scriptId);
 
+    // Always remove popunder script if it exists
+    if (existingScript) {
+      existingScript.remove();
+    }
+
+    /* 
+    // Logic disabled to improve UX
     // Only inject if user is logged in AND not premium
     if (user && !isPremium) {
       if (!existingScript) {
@@ -280,6 +287,7 @@ const MainApp = () => {
         existingScript.remove();
       }
     }
+    */
   }, [user, isPremium]);
 
   const triggerAdBeforeAction = (callback) => {
