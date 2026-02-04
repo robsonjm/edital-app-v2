@@ -14,7 +14,8 @@ const AdsterraNativeBanner = () => {
 
     const script = document.createElement('script');
     script.id = scriptId;
-    script.src = "https://controlslaverystuffing.com/4f94c235f19692ff0869b0fed85e691f/invoke.js";
+    // Add timestamp to force reload (cache busting)
+    script.src = `https://controlslaverystuffing.com/4f94c235f19692ff0869b0fed85e691f/invoke.js?t=${Date.now()}`;
     script.async = true;
     script.setAttribute('data-cfasync', 'false');
     

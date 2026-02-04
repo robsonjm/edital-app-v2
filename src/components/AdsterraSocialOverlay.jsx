@@ -23,7 +23,8 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
 
     const script = document.createElement('script');
     script.id = scriptId;
-    script.src = "https://controlslaverystuffing.com/6f/8c/2f/6f8c2f808c585dbdb3bbbd5c5307aa4a.js";
+    // Add timestamp to force reload (cache busting)
+    script.src = `https://controlslaverystuffing.com/6f/8c/2f/6f8c2f808c585dbdb3bbbd5c5307aa4a.js?t=${Date.now()}`;
     script.async = true;
     script.type = 'text/javascript';
     script.setAttribute('data-cfasync', 'false');
