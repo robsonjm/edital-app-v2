@@ -304,6 +304,7 @@ const MainApp = () => {
   }, [user]);
 
   const handlePremiumPurchase = async () => {
+    if (!user) return;
     try {
       const response = await fetch("https://api.mercadopago.com/checkout/preferences", {
         method: "POST",
@@ -320,6 +321,7 @@ const MainApp = () => {
               unit_price: 9.90
             }
           ],
+          external_reference: user.uid,
           back_urls: {
             success: window.location.href,
             failure: window.location.href,
@@ -336,6 +338,63 @@ const MainApp = () => {
     } catch (error) {
       console.error(error);
       alert("Erro ao iniciar pagamento.");
+    }
+  };
+
+  const checkPaymentStatus = async (specificPaymentId = null) => {
+    if (!user) return;
+    setIsProcessing(true);
+    try {
+      let foundApproved = false;
+      let paymentData = null;
+
+      // 1. Check specific ID if provided
+      if (specificPaymentId) {
+         const response = await fetch(`https://api.mercadopago.com/v1/payments/${specificPaymentId}`, {
+           headers: {
+             "Authorization": `Bearer APP_USR-456420055054562-120507-136367367deed129deaa0a0e2dc67dc7-93943184`
+           }
+         });
+         if (response.ok) {
+           const data = await response.json();
+           if (data.status === 'approved') {
+             foundApproved = true;
+             paymentData = data;
+           }
+         }
+      }
+
+      // 2. Search by external_reference (User ID) if not found yet
+      if (!foundApproved) {
+        const response = await fetch(`https://api.mercadopago.com/v1/payments/search?external_reference=${user.uid}&status=approved`, {
+          headers: {
+            "Authorization": `Bearer APP_USR-456420055054562-120507-136367367deed129deaa0a0e2dc67dc7-93943184`
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.results && data.results.length > 0) {
+            foundApproved = true;
+            paymentData = data.results[0];
+          }
+        }
+      }
+
+      if (foundApproved && paymentData) {
+        const userRef = doc(db, 'users', user.uid);
+        await setDoc(userRef, { isPremium: true, lastPaymentId: paymentData.id }, { merge: true });
+        setIsPremium(true);
+        alert("Pagamento verificado com sucesso! Premium ativado.");
+        setPreferenceId(null); // Close modal
+      } else {
+        alert("Nenhum pagamento aprovado encontrado para este usuário.");
+      }
+
+    } catch (error) {
+      console.error("Erro ao verificar pagamento:", error);
+      alert("Erro ao verificar status do pagamento.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -1201,6 +1260,17 @@ const MainApp = () => {
             </p>
             <div id="wallet_container">
               <Wallet initialization={{ preferenceId: preferenceId }} customization={{ texts:{ valueProp: 'smart_option'}}} />
+            </div>
+            <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 text-center">
+              <button 
+                onClick={() => {
+                  const pid = prompt("Se você já pagou e não foi ativado, digite o ID do pagamento (opcional) ou deixe em branco para buscar automaticamente:");
+                  checkPaymentStatus(pid);
+                }}
+                className="text-xs text-blue-600 dark:text-blue-400 hover:underline font-medium"
+              >
+                Já fiz o pagamento (Restaurar Compra)
+              </button>
             </div>
           </div>
         </div>
