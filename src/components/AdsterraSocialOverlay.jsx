@@ -12,13 +12,14 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
     setTimeLeft(5);
     setCanClose(false);
 
-    // Inject Social Bar Script
+    // Inject Social Bar Script (SocialBar_Interstitial)
     const scriptId = 'adsterra-social-bar';
     if (!document.getElementById(scriptId)) {
       const script = document.createElement('script');
       script.id = scriptId;
       script.src = "https://controlslaverystuffing.com/6f/8c/2f/6f8c2f808c585dbdb3bbbd5c5307aa4a.js";
       script.async = true;
+      script.setAttribute('data-cfasync', 'false');
       document.body.appendChild(script);
     }
 
