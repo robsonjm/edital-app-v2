@@ -1,15 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
+import AdsterraNativeBanner from './AdsterraNativeBanner';
 
 const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
-  const [timeLeft, setTimeLeft] = useState(5);
+  const [timeLeft, setTimeLeft] = useState(10);
   const [canClose, setCanClose] = useState(false);
 
   useEffect(() => {
     if (!isOpen) return;
 
     // Reset state
-    setTimeLeft(5);
+    setTimeLeft(10);
     setCanClose(false);
 
     // Inject Social Bar Script (SocialBar_Interstitial)
@@ -59,7 +60,7 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center relative overflow-hidden animate-fade-in-up">
         
         {/* Progress Bar */}
-        <div className="absolute top-0 left-0 h-1 bg-blue-600 transition-all duration-1000 ease-linear" style={{ width: `${((5 - timeLeft) / 5) * 100}%` }}></div>
+        <div className="absolute top-0 left-0 h-1 bg-blue-600 transition-all duration-1000 ease-linear" style={{ width: `${((10 - timeLeft) / 10) * 100}%` }}></div>
 
         <div className="mb-6 flex justify-center">
           {canClose ? (
@@ -78,6 +79,10 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
           {canClose ? "Pronto para continuar!" : "Preparando seu conteúdo..."}
         </h2>
         
+        <div className="my-2">
+           <AdsterraNativeBanner />
+        </div>
+
         <p className="text-slate-500 text-sm mb-8 leading-relaxed">
           {canClose 
             ? "Obrigado por aguardar. Você já pode acessar seu recurso." 
