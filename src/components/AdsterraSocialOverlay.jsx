@@ -14,24 +14,22 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
     setTimeLeft(10);
     setCanClose(false);
 
-    // Inject Social Bar Script (SocialBar_Interstitial) inside the container
+    // Inject Social Bar Script (SocialBar_Interstitial)
     const scriptId = 'adsterra-social-bar';
     
     // Cleanup previous script if exists to force reload
     const existingScript = document.getElementById(scriptId);
     if (existingScript) existingScript.remove();
 
-    if (adContainerRef.current) {
-      const script = document.createElement('script');
-      script.id = scriptId;
-      script.src = "https://controlslaverystuffing.com/6f/8c/2f/6f8c2f808c585dbdb3bbbd5c5307aa4a.js";
-      script.async = true;
-      script.type = 'text/javascript';
-      script.setAttribute('data-cfasync', 'false');
-      
-      // Append to the specific container instead of body
-      adContainerRef.current.appendChild(script);
-    }
+    const script = document.createElement('script');
+    script.id = scriptId;
+    script.src = "https://controlslaverystuffing.com/6f/8c/2f/6f8c2f808c585dbdb3bbbd5c5307aa4a.js";
+    script.async = true;
+    script.type = 'text/javascript';
+    script.setAttribute('data-cfasync', 'false');
+    
+    // Append to body (standard for Social Bar/Interstitial)
+    document.body.appendChild(script);
 
     // Countdown Timer
     const timer = setInterval(() => {
@@ -82,7 +80,7 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
       </div>
 
       {/* Main Content / Ad Area */}
-      <div className="flex-1 w-full flex flex-col items-center justify-center my-8 min-h-[300px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl relative" ref={adContainerRef}>
+      <div className="flex-1 w-full flex flex-col items-center justify-center my-8 min-h-[300px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl relative">
         
         {/* Central Timer/Status Indicator (Floating in the middle of ad space if needed, or just above) */}
         <div className="mb-8 scale-150 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none opacity-20">
