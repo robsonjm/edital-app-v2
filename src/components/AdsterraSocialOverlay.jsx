@@ -5,6 +5,7 @@ import { Loader2, X } from 'lucide-react';
 const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
   const [timeLeft, setTimeLeft] = useState(10);
   const [canClose, setCanClose] = useState(false);
+  const adContainerRef = React.useRef(null);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -13,16 +14,23 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
     setTimeLeft(10);
     setCanClose(false);
 
-    // Inject Social Bar Script (SocialBar_Interstitial)
+    // Inject Social Bar Script (SocialBar_Interstitial) inside the container
     const scriptId = 'adsterra-social-bar';
-    if (!document.getElementById(scriptId)) {
+    
+    // Cleanup previous script if exists to force reload
+    const existingScript = document.getElementById(scriptId);
+    if (existingScript) existingScript.remove();
+
+    if (adContainerRef.current) {
       const script = document.createElement('script');
       script.id = scriptId;
       script.src = "https://controlslaverystuffing.com/6f/8c/2f/6f8c2f808c585dbdb3bbbd5c5307aa4a.js";
       script.async = true;
       script.type = 'text/javascript';
       script.setAttribute('data-cfasync', 'false');
-      document.body.appendChild(script);
+      
+      // Append to the specific container instead of body
+      adContainerRef.current.appendChild(script);
     }
 
     // Countdown Timer
@@ -56,7 +64,7 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[50] bg-white flex flex-col items-center justify-between p-6 transition-all duration-300">
+    <div className="fixed inset-0 z-[40] bg-white flex flex-col items-center justify-between p-6 transition-all duration-300">
         
       {/* Progress Bar (Top) */}
       <div className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-1000 ease-linear" style={{ width: `${((10 - timeLeft) / 10) * 100}%` }}></div>
@@ -74,10 +82,10 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
       </div>
 
       {/* Main Content / Ad Area */}
-      <div className="flex-1 w-full flex flex-col items-center justify-center my-8 min-h-[300px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl relative overflow-hidden">
+      <div className="flex-1 w-full flex flex-col items-center justify-center my-8 min-h-[300px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl relative" ref={adContainerRef}>
         
         {/* Central Timer/Status Indicator (Floating in the middle of ad space if needed, or just above) */}
-        <div className="mb-8 scale-150">
+        <div className="mb-8 scale-150 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none opacity-20">
           {canClose ? (
              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center animate-in zoom-in">
                <X className="w-8 h-8" />
@@ -90,12 +98,10 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
           )}
         </div>
 
-        {/* Social Bar Interstitial Container - The script will inject the ad automatically */}
-        <div className="w-full h-full flex items-center justify-center text-slate-300 text-sm">
-           <p>Carregando anúncio...</p>
+        {/* Placeholder text (will be covered by ad if it loads) */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <p className="text-slate-300 text-sm">Carregando patrocinador...</p>
         </div>
-        
-        <p className="text-xs text-slate-400 mt-4">Publicidade</p>
       </div>
 
       {/* Footer / Action Button */}
