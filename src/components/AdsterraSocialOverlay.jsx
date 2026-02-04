@@ -56,13 +56,28 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[50] bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 transition-all duration-300">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 text-center relative overflow-hidden animate-fade-in-up">
+    <div className="fixed inset-0 z-[50] bg-white flex flex-col items-center justify-between p-6 transition-all duration-300">
         
-        {/* Progress Bar */}
-        <div className="absolute top-0 left-0 h-1 bg-blue-600 transition-all duration-1000 ease-linear" style={{ width: `${((10 - timeLeft) / 10) * 100}%` }}></div>
+      {/* Progress Bar (Top) */}
+      <div className="absolute top-0 left-0 h-2 bg-blue-600 transition-all duration-1000 ease-linear" style={{ width: `${((10 - timeLeft) / 10) * 100}%` }}></div>
 
-        <div className="mb-6 flex justify-center">
+      {/* Header Section */}
+      <div className="mt-8 text-center w-full max-w-2xl">
+        <h2 className="text-3xl font-black text-slate-900 mb-2">
+          {canClose ? "Pronto para continuar!" : "Apoie nosso projeto"}
+        </h2>
+        <p className="text-slate-500 text-lg">
+          {canClose 
+            ? "Obrigado por aguardar. Você já pode acessar seu recurso." 
+            : "Aguarde alguns segundos enquanto carregamos nossos patrocinadores. Isso mantém o Edital Master gratuito."}
+        </p>
+      </div>
+
+      {/* Main Content / Ad Area */}
+      <div className="flex-1 w-full flex flex-col items-center justify-center my-8 min-h-[300px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl relative overflow-hidden">
+        
+        {/* Central Timer/Status Indicator (Floating in the middle of ad space if needed, or just above) */}
+        <div className="mb-8 scale-150">
           {canClose ? (
              <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center animate-in zoom-in">
                <X className="w-8 h-8" />
@@ -75,33 +90,29 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
           )}
         </div>
 
-        <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">
-          {canClose ? "Pronto para continuar!" : "Preparando seu conteúdo..."}
-        </h2>
-        
-        <div className="my-2">
+        {/* Native Banner Fallback/Placement */}
+        <div className="w-full max-w-4xl">
            <AdsterraNativeBanner />
         </div>
+        
+        <p className="text-xs text-slate-400 mt-4">Publicidade</p>
+      </div>
 
-        <p className="text-slate-500 text-sm mb-8 leading-relaxed">
-          {canClose 
-            ? "Obrigado por aguardar. Você já pode acessar seu recurso." 
-            : "Estamos processando sua solicitação. Por favor, aguarde alguns segundos enquanto carregamos nossos patrocinadores."}
-        </p>
-
+      {/* Footer / Action Button */}
+      <div className="w-full max-w-xl mb-8">
         <button
           onClick={handleClose}
           disabled={!canClose}
-          className={`w-full py-4 rounded-xl font-bold text-lg transition-all transform ${
+          className={`w-full py-6 rounded-2xl font-bold text-xl transition-all transform ${
             canClose 
-              ? 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-[1.02] shadow-lg shadow-blue-600/30 cursor-pointer' 
+              ? 'bg-blue-600 text-white hover:bg-blue-700 hover:scale-[1.01] shadow-xl shadow-blue-600/30 cursor-pointer' 
               : 'bg-slate-100 text-slate-400 cursor-not-allowed'
           }`}
         >
-          {canClose ? "Continuar Agora" : `Aguarde ${timeLeft}s...`}
+          {canClose ? "Continuar para o App" : `Aguarde ${timeLeft} segundos...`}
         </button>
-
-        <p className="mt-4 text-[10px] text-slate-400 uppercase tracking-widest">
+        
+        <p className="mt-6 text-center text-xs text-slate-400 uppercase tracking-widest">
           Edital Master Free Tier
         </p>
       </div>
