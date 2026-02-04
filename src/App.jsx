@@ -52,6 +52,7 @@ import { initializeApp } from 'firebase/app';
 import { getAnalytics } from "firebase/analytics";
 import { 
   getFirestore, 
+  initializeFirestore,
   collection, 
   doc, 
   setDoc, 
@@ -98,7 +99,10 @@ const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 const app = initializeApp(firebaseConfig);
 const analytics = getAnalytics(app);
 const auth = getAuth(app);
-const db = getFirestore(app);
+// Initialize Firestore with experimentalForceLongPolling to fix QUIC/Network errors
+const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+});
 const appId = 'edital-master-v3';
 
 // --- UI COMPONENTS ---
