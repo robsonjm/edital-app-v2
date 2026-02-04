@@ -66,7 +66,7 @@ import {
 import { initMercadoPago, Wallet } from '@mercadopago/sdk-react';
 
 // Initialize Mercado Pago
-initMercadoPago('TEST-fbe92fa7-f9e7-4c93-9788-04b8881ea018');
+initMercadoPago('APP_USR-df375933-81c1-40ce-b410-1d6251340721');
 
 import { 
   getAuth, 
@@ -309,7 +309,7 @@ const MainApp = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer TEST-456420055054562-120507-744484aee1f9d3d51bdd16d520b3e2b2-93943184`
+          "Authorization": `Bearer APP_USR-456420055054562-120507-136367367deed129deaa0a0e2dc67dc7-93943184`
         },
         body: JSON.stringify({
           items: [
