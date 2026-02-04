@@ -1,9 +1,36 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 
 const AdsterraNativeBanner = () => {
   const bannerRef = useRef(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
 
   useEffect(() => {
+    const checkScroll = () => {
+      // Check if user has scrolled to the bottom (with 100px buffer)
+      // Or if the page is not scrollable (content fits in window)
+      const isBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
+      const isNotScrollable = document.body.offsetHeight <= window.innerHeight;
+      
+      if (isBottom || isNotScrollable) {
+        setShouldLoad(true);
+      }
+    };
+
+    // Initial check
+    checkScroll();
+
+    window.addEventListener('scroll', checkScroll);
+    window.addEventListener('resize', checkScroll);
+
+    return () => {
+      window.removeEventListener('scroll', checkScroll);
+      window.removeEventListener('resize', checkScroll);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!shouldLoad) return;
+
     const scriptId = 'adsterra-native-script-4f94c235';
     
     // Always clean up existing script to force reload on route change
@@ -27,7 +54,9 @@ const AdsterraNativeBanner = () => {
       const s = document.getElementById(scriptId);
       if (s) s.remove();
     };
-  }, []);
+  }, [shouldLoad]);
+
+  if (!shouldLoad) return null;
 
   return (
     <div className="w-full flex justify-center my-6" ref={bannerRef}>
