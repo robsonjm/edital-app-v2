@@ -38,6 +38,7 @@ import {
   Sparkles,
   MessageSquare,
   Zap,
+  Crown,
   Send,
   History,
   TrendingUp,
@@ -724,7 +725,7 @@ const MainApp = () => {
         </div>
       </div>
       
-      <AdsterraNativeBanner />
+      {!isPremium && <AdsterraNativeBanner />}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {editais.map(e => {
@@ -849,7 +850,7 @@ const MainApp = () => {
             <p className="text-slate-500 mt-2">Fique por dentro do mundo dos concursos públicos.</p>
         </header>
 
-        <AdsterraNativeBanner />
+        {!isPremium && <AdsterraNativeBanner />}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Left Column: Latest News */}
@@ -1196,7 +1197,7 @@ const MainApp = () => {
               <div className="bg-blue-600 p-1.5 rounded-xl shadow-lg transition-transform hover:scale-105"><Brain className="w-6 h-6 text-white" /></div>
               <span className="text-2xl font-black tracking-tighter italic uppercase">Edital<span className="text-blue-600">Master</span></span>
             </div>
-            {!isPremium && (
+            {!isPremium ? (
               <button 
                 onClick={handlePremiumPurchase}
                 className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white text-xs font-bold py-1.5 px-3 rounded-full shadow-md transition-transform hover:scale-105 flex items-center gap-1 animate-pulse"
@@ -1205,6 +1206,11 @@ const MainApp = () => {
                 <span className="sm:hidden">Premium</span>
                 <Zap className="w-3 h-3 fill-current" />
               </button>
+            ) : (
+              <div className="bg-gradient-to-r from-green-400 to-emerald-500 text-white text-xs font-bold py-1.5 px-3 rounded-full shadow-md flex items-center gap-1 cursor-default select-none animate-in fade-in zoom-in">
+                <span>Premium</span>
+                <Crown className="w-3 h-3 fill-current" />
+              </div>
             )}
           </div>
           {user && (
