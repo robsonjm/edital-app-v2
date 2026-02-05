@@ -12,7 +12,7 @@ import {
   FileText, BookOpen, Calendar, CheckCircle, BarChart2, Upload, Plus, ChevronRight, Brain, Trophy,
   AlertCircle, Loader2, Trash2, Search, File, X, Paperclip, Clock, Timer, Dumbbell, ClipboardList,
   AlertTriangle, ChevronLeft, RefreshCw, Library, BookMarked, GraduationCap, Sparkles, MessageSquare,
-  Zap, Crown, Send, History, TrendingUp, FileSearch, Newspaper, Globe
+  Zap, Crown, Send, History, TrendingUp, FileSearch, Newspaper, Globe, ExternalLink
 } from 'lucide-react';
 import { Card } from './components/ui/Card.jsx';
 import { Button } from './components/ui/Button.jsx';
@@ -229,6 +229,99 @@ const HistoryView = ({ simuladosHistory }) => {
   );
 };
 
+const NewsDetailView = ({ isPremium }) => {
+  const { state } = useLocation();
+  const navigate = useNavigate();
+  const [content, setContent] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const { newsItem } = state || {};
+
+  useEffect(() => {
+    if (!newsItem) {
+      navigate('/news');
+      return;
+    }
+
+    const generateContent = async () => {
+      setLoading(true);
+      try {
+        const apiKey = GEMINI_API_KEY;
+        const systemPrompt = `Você é um redator sênior de um portal de notícias de concursos públicos. 
+        Sua tarefa é criar uma notícia completa e original baseada no resumo fornecido.
+        Use um tom jornalístico, informativo e otimista.
+        Estruture com:
+        1. Um título chamativo (mas fiel aos fatos).
+        2. Um parágrafo de introdução forte.
+        3. Detalhes (use o resumo como base, expanda com conhecimentos gerais sobre o órgão/concurso se souber, mas não invente dados específicos como datas não mencionadas).
+        4. Uma conclusão com "O que fazer agora?".
+        Formate a resposta em HTML limpo (apenas tags <p>, <h2>, <ul>, <li>, <strong>). Não use Markdown.`;
+        
+        const prompt = `Título Original: ${newsItem.title}\nResumo/Snippet: ${newsItem.contentSnippet}\nFonte: ${newsItem.source}`;
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            contents: [{ parts: [{ text: prompt }] }], 
+            systemInstruction: { parts: [{ text: systemPrompt }] } 
+          })
+        });
+        
+        const result = await response.json();
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+        setContent(text || `<p>${newsItem.contentSnippet}</p><p><em>Não foi possível expandir a notícia.</em></p>`);
+      } catch (err) {
+        console.error(err);
+        setContent(`<p>${newsItem.contentSnippet}</p>`);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    generateContent();
+  }, [newsItem, navigate]);
+
+  if (!newsItem) return null;
+
+  return (
+    <div className="max-w-4xl mx-auto py-10 animate-in fade-in px-4">
+      <button onClick={() => navigate('/news')} className="text-slate-400 hover:text-blue-600 flex items-center gap-1 text-sm mb-8 font-bold"><ChevronLeft className="w-4 h-4" /> Voltar para Notícias</button>
+      
+      <article className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-800">
+         <header className="mb-8 border-b pb-8 border-slate-100 dark:border-slate-800">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider">{newsItem.source}</span>
+              <span className="text-slate-400 text-xs font-bold flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(newsItem.pubDate).toLocaleDateString('pt-BR')}</span>
+            </div>
+            <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white leading-tight mb-4">{newsItem.title}</h1>
+         </header>
+
+         {!isPremium && <div className="mb-8"><AdsterraNativeBanner /></div>}
+
+         {loading ? (
+            <div className="space-y-4 animate-pulse">
+               <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full"></div>
+               <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-5/6"></div>
+               <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-full"></div>
+               <div className="h-32 bg-slate-100 dark:bg-slate-800/50 rounded-xl w-full"></div>
+            </div>
+         ) : (
+            <div className="prose prose-slate dark:prose-invert max-w-none leading-relaxed" dangerouslySetInnerHTML={{ __html: content }}></div>
+         )}
+
+         <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800">
+            <p className="text-slate-500 text-sm mb-4 italic">Esta notícia foi processada por nossa IA baseada em informações públicas.</p>
+            <a href={newsItem.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-blue-600 font-bold hover:underline">
+               Ler matéria original na íntegra <ExternalLink className="w-4 h-4" />
+            </a>
+         </div>
+      </article>
+
+      {!isPremium && <div className="mt-8"><AdsterraNativeBanner /></div>}
+    </div>
+  );
+};
+
 const NewsView = ({ isPremium }) => {
   const navigate = useNavigate();
   const [aiTrends, setAiTrends] = useState(null);
@@ -358,9 +451,9 @@ const NewsView = ({ isPremium }) => {
                               <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider truncate max-w-[200px]">{item.source}</span>
                               <span className="text-slate-400 text-xs font-medium whitespace-nowrap">{new Date(item.pubDate).toLocaleDateString('pt-BR')}</span>
                           </div>
-                          <a href={item.link} target="_blank" rel="noopener noreferrer" className="block group-hover:text-blue-600 transition-colors">
+                          <div onClick={() => navigate('/news/read', { state: { newsItem: item } })} className="cursor-pointer block group-hover:text-blue-600 transition-colors">
                             <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2 leading-snug">{item.title}</h4>
-                          </a>
+                          </div>
                           <div className="text-slate-500 text-sm leading-relaxed line-clamp-3" dangerouslySetInnerHTML={{ __html: item.contentSnippet || '' }}></div>
                       </Card>
                     ))
@@ -1117,6 +1210,7 @@ const MainApp = () => {
           <Route path="/dashboard" element={<Navigate to="/" replace />} />
           <Route path="/history" element={<HistoryView simuladosHistory={simuladosHistory} />} />
           <Route path="/news" element={<NewsView isPremium={isPremium} />} />
+          <Route path="/news/read" element={<NewsDetailView isPremium={isPremium} />} />
           <Route path="/analyze" element={<AnalyzeView onAnalyze={handleAnalyze} isProcessing={isProcessing} error={error} triggerAdBeforeAction={triggerAdBeforeAction} />} />
           <Route path="/edital/:id" element={<EditalDetailsView editais={editais} />} />
           <Route path="/edital/:id/study" element={<StudyCenterView editais={editais} startStudySession={startStudySession} triggerAdBeforeAction={triggerAdBeforeAction} />} />
