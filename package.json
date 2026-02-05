@@ -10,14 +10,17 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@mercadopago/sdk-react": "^1.0.7",
     "firebase": "^12.8.0",
+    "firebase-admin": "^13.6.1",
     "lucide-react": "^0.563.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-helmet-async": "^2.0.5",
     "react-router-dom": "^7.13.0",
-    "rss-parser": "^3.13.0"
+    "rss-parser": "^3.13.0",
+    "slugify": "^1.6.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
