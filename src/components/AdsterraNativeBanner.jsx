@@ -66,6 +66,15 @@ const AdsterraNativeBanner = () => {
 
       // Append to body
       document.body.appendChild(script);
+
+      // Check if ad loaded successfully after a few seconds
+      setTimeout(() => {
+        const container = document.getElementById('container-4f94c235f19692ff0869b0fed85e691f');
+        if (container && container.offsetHeight < 10) {
+            console.warn('Adsterra banner likely blocked or failed to render. Hiding container.');
+            if (bannerRef.current) bannerRef.current.style.display = 'none';
+        }
+      }, 5000);
     };
 
     loadScript();
