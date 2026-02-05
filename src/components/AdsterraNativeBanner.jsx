@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 
 const AdsterraNativeBanner = ({ placementId = "4f94c235f19692ff0869b0fed85e691f" }) => {
-  const bannerRef = useRef(null);
+  const bannerRef = useRef(null); // Ref for the wrapper
+  const adContainerRef = useRef(null); // Ref for the ad container (unmanaged by React)
   const [isLoaded, setIsLoaded] = useState(false);
   const [debugStatus, setDebugStatus] = useState('Initializing...');
 
@@ -23,15 +24,19 @@ const AdsterraNativeBanner = ({ placementId = "4f94c235f19692ff0869b0fed85e691f"
       cleanupScript();
       setDebugStatus('Loading script...');
 
+      // 1. Create the Script Element
       const script = document.createElement('script');
       script.id = scriptId;
       script.async = true;
-      script.src = `https://controlslaverystuffing.com/${placementId}/invoke.js?t=${Date.now()}`;
       script.setAttribute('data-cfasync', 'false');
-
+      // Remove timestamp if it's causing 403, or keep it. 
+      // 403 Forbidden usually means domain block or invalid ID. 
+      // We will try standard URL without cache busting param to be safe against firewall rules.
+      script.src = `//controlslaverystuffing.com/${placementId}/invoke.js`;
+      
       script.onload = () => {
         console.log(`[Adsterra] Native Banner script loaded for ${placementId}`);
-        setDebugStatus('Script loaded. Waiting for render...');
+        setDebugStatus('Script loaded. Rendering...');
       };
 
       script.onerror = () => {
@@ -40,26 +45,27 @@ const AdsterraNativeBanner = ({ placementId = "4f94c235f19692ff0869b0fed85e691f"
           const msg = `[Adsterra] Native Banner failed. Retrying (${retryCount}/${maxRetries})...`;
           console.warn(msg);
           setDebugStatus(msg);
-          retryTimeout = setTimeout(loadScript, 2000 * retryCount); // Increased backoff
+          retryTimeout = setTimeout(loadScript, 3000 * retryCount); // Slower backoff
         } else {
-            const msg = '[Adsterra] Native Banner failed to load after multiple attempts. Check network/antivirus.';
+            const msg = '[Adsterra] Native Banner failed. 403/Network Error.';
             console.error(msg);
             setDebugStatus(msg);
         }
       };
 
-      if (bannerRef.current) {
-         bannerRef.current.innerHTML = ''; // Clear previous content
+      // 2. Inject into the UNMANAGED container
+      if (adContainerRef.current) {
+         adContainerRef.current.innerHTML = ''; // Safe: React doesn't manage children of this specific div
          
-         // Create container
-         const containerDiv = document.createElement('div');
-         containerDiv.id = containerId;
-         containerDiv.style.minHeight = '250px'; // Force height
-         containerDiv.style.minWidth = '300px';
-         bannerRef.current.appendChild(containerDiv);
+         // Create the specific div that Adsterra's invoke.js often looks for
+         // (Though invoke.js usually writes to document.write or current script location)
+         // We append the script *inside* our container so it writes there.
          
-         // Append script
-         bannerRef.current.appendChild(script);
+         const innerDiv = document.createElement('div');
+         innerDiv.id = containerId; // Specific ID often required
+         adContainerRef.current.appendChild(innerDiv);
+         adContainerRef.current.appendChild(script);
+         
          console.log(`[Adsterra] Injected script for ${placementId}`);
       }
     };
@@ -83,20 +89,9 @@ const AdsterraNativeBanner = ({ placementId = "4f94c235f19692ff0869b0fed85e691f"
         window.addEventListener('scroll', handleScroll);
     }
     
-    // Relaxed Auto-hide logic (Log warning only for now to debug)
-    const checkVisibility = setTimeout(() => {
-        const container = document.getElementById(containerId);
-        if (container && container.offsetHeight < 10) {
-            console.warn(`[Adsterra] Container ${containerId} is empty (height < 10px). Ad likely blocked.`);
-            setDebugStatus('Ad container empty (Blocked?)');
-            // bannerRef.current.style.display = 'none'; // DISABLED AUTO-HIDE FOR DEBUGGING
-        }
-    }, 8000);
-
     return () => {
       window.removeEventListener('scroll', handleScroll);
       clearTimeout(retryTimeout);
-      clearTimeout(checkVisibility);
       cleanupScript();
     };
   }, [placementId, isLoaded]); 
@@ -104,11 +99,20 @@ const AdsterraNativeBanner = ({ placementId = "4f94c235f19692ff0869b0fed85e691f"
   return (
     <div 
         ref={bannerRef} 
-        className="my-8 flex flex-col justify-center items-center min-h-[250px] w-full bg-slate-50 rounded-lg border-2 border-dashed border-slate-200"
+        className="my-8 flex flex-col justify-center items-center min-h-[250px] w-full bg-slate-50 rounded-lg border-2 border-dashed border-slate-200 overflow-hidden"
     >
-      {/* Debug Info (Visible only if empty or in dev) */}
-      {!isLoaded && <span className="text-slate-400 text-xs">Waiting for scroll...</span>}
+      {/* React Managed Status Indicator */}
+      {!isLoaded && (
+          <span className="text-slate-400 text-xs animate-pulse">
+              Carregando publicidade...
+          </span>
+      )}
+      
+      {/* React Managed Debug Info (Dev only) */}
       <div style={{display: 'none'}} className="text-[10px] text-red-500 mt-2">{debugStatus}</div>
+
+      {/* UNMANAGED Container for Ad Script - React never touches children of this div */}
+      <div ref={adContainerRef} className="w-full flex justify-center items-center"></div>
     </div>
   );
 };
