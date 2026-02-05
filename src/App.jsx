@@ -7,6 +7,7 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfService from './pages/TermsOfService';
 import AdsterraNativeBanner from './components/AdsterraNativeBanner.jsx';
 import AdsterraSocialOverlay from './components/AdsterraSocialOverlay.jsx';
+import AdsterraPopunder from './components/AdsterraPopunder.jsx';
 import { 
   FileText, 
   BookOpen, 
@@ -264,35 +265,15 @@ const MainApp = () => {
   // Adsterra Social Overlay State
   const [adOverlay, setAdOverlay] = useState({ isOpen: false, onComplete: null });
 
-  // Popunder Management (DISABLED TEMPORARILY)
+  // Reset/Reload Ads on View Change (Navigation)
   useEffect(() => {
-    const scriptId = 'adsterra-popunder';
-    const existingScript = document.getElementById(scriptId);
-
-    // Always remove popunder script if it exists
-    if (existingScript) {
-      existingScript.remove();
+    // This effect runs on every internal navigation (view change)
+    // We can use this to force refresh ad states if needed
+    if (!isPremium) {
+       console.log(`[Adsterra] Navigation detected: ${view}. Ensuring ads are active.`);
+       // If we had a global banner that needed reloading, we would toggle a key here.
     }
-
-    /* 
-    // Logic disabled to improve UX
-    // Only inject if user is logged in AND not premium
-    if (user && !isPremium) {
-      if (!existingScript) {
-        const script = document.createElement('script');
-        script.id = scriptId;
-        script.src = "https://controlslaverystuffing.com/f5/64/d9/f564d94e9601b5005af8479903a53392.js";
-        script.async = true;
-        document.body.appendChild(script);
-      }
-    } else {
-      // Remove if exists (clean up for premium or logout)
-      if (existingScript) {
-        existingScript.remove();
-      }
-    }
-    */
-  }, [user, isPremium]);
+  }, [view, isPremium]);
 
   const triggerAdBeforeAction = (callback) => {
     if (isPremium) {
@@ -1223,6 +1204,7 @@ const MainApp = () => {
         <div className="flex flex-col min-h-screen">
             <LoginView />
             <Footer />
+            <AdsterraPopunder isPremium={false} />
         </div>
       </>
     );
@@ -1292,6 +1274,7 @@ const MainApp = () => {
         onComplete={adOverlay.onComplete} 
         onClose={() => setAdOverlay(prev => ({ ...prev, isOpen: false }))} 
       />
+      <AdsterraPopunder isPremium={isPremium} />
       {preferenceId && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 relative">
