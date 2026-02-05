@@ -10,6 +10,8 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose, placementId = "6f8
   useEffect(() => {
     if (!isOpen) return;
 
+    console.log(`[Adsterra] Social Overlay opened for ${placementId}`);
+
     // Reset state
     setTimeLeft(10);
     setCanClose(false);
@@ -23,6 +25,7 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose, placementId = "6f8
     const cleanupScript = () => {
       const existingScript = document.getElementById(scriptId);
       if (existingScript) existingScript.remove();
+      // Try to remove Adsterra global if possible (difficult without exact name)
     };
 
     const loadScript = () => {
@@ -31,7 +34,6 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose, placementId = "6f8
       const script = document.createElement('script');
       script.id = scriptId;
       // Construct URL from placementId (chunked: 2/2/2/full)
-      // Example: 6f8c2f80... -> 6f/8c/2f/6f8c2f80...
       const p1 = placementId.slice(0, 2);
       const p2 = placementId.slice(2, 4);
       const p3 = placementId.slice(4, 6);
@@ -42,13 +44,17 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose, placementId = "6f8
       script.type = 'text/javascript';
       script.setAttribute('data-cfasync', 'false');
       
+      script.onload = () => {
+          console.log(`[Adsterra] Social Overlay script loaded for ${placementId}`);
+      };
+
       script.onerror = () => {
         if (retryCount < maxRetries) {
           retryCount++;
-          console.warn(`Adsterra Social Overlay (${placementId}) failed to load. Retrying (${retryCount}/${maxRetries})...`);
-          retryTimeout = setTimeout(loadScript, 1000 * retryCount);
+          console.warn(`[Adsterra] Social Overlay (${placementId}) failed to load. Retrying (${retryCount}/${maxRetries})...`);
+          retryTimeout = setTimeout(loadScript, 2000 * retryCount);
         } else {
-            console.error('Adsterra Social Overlay failed to load after multiple attempts.');
+            console.error('[Adsterra] Social Overlay failed to load after multiple attempts. Network/AV blocking likely.');
             // Allow user to close immediately if ad fails completely
             setCanClose(true);
             setTimeLeft(0);
@@ -61,19 +67,12 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose, placementId = "6f8
 
     loadScript();
 
-    // Fallback: If ad script loads but fails to render (silent failure/network block),
-    // we can't easily detect it cross-origin, but we ensure the user isn't stuck forever
-    // by sticking to the timer. However, if we could detect "no ad", we'd close earlier.
-    // For now, the timer is the safe fallback.
-
     // Countdown Timer
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
           setCanClose(true);
-          // Auto-complete if desired, or wait for user to click close
-          // onComplete(); // Uncomment to auto-proceed
           return 0;
         }
         return prev - 1;
