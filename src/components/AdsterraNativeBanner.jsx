@@ -32,27 +32,48 @@ const AdsterraNativeBanner = () => {
     if (!shouldLoad) return;
 
     const scriptId = 'adsterra-native-script-4f94c235';
+    let retryCount = 0;
+    const maxRetries = 3;
+    let retryTimeout;
     
-    // Always clean up existing script to force reload on route change
-    const existingScript = document.getElementById(scriptId);
-    if (existingScript) {
-      existingScript.remove();
-    }
+    // Function to clean up script
+    const cleanupScript = () => {
+      const existingScript = document.getElementById(scriptId);
+      if (existingScript) {
+        existingScript.remove();
+      }
+    };
 
-    const script = document.createElement('script');
-    script.id = scriptId;
-    // Add timestamp to force reload (cache busting)
-    script.src = `https://controlslaverystuffing.com/4f94c235f19692ff0869b0fed85e691f/invoke.js?t=${Date.now()}`;
-    script.async = true;
-    script.setAttribute('data-cfasync', 'false');
-    
-    // Append to body
-    document.body.appendChild(script);
+    const loadScript = () => {
+      cleanupScript(); // Ensure clean slate
+
+      const script = document.createElement('script');
+      script.id = scriptId;
+      // Add timestamp to force reload (cache busting)
+      script.src = `https://controlslaverystuffing.com/4f94c235f19692ff0869b0fed85e691f/invoke.js?t=${Date.now()}`;
+      script.async = true;
+      script.setAttribute('data-cfasync', 'false');
+      
+      script.onerror = () => {
+        if (retryCount < maxRetries) {
+          retryCount++;
+          console.warn(`Adsterra Native Banner failed to load. Retrying (${retryCount}/${maxRetries})...`);
+          retryTimeout = setTimeout(loadScript, 1000 * retryCount); // Progressive backoff
+        } else {
+          console.error('Adsterra Native Banner failed to load after multiple attempts.');
+        }
+      };
+
+      // Append to body
+      document.body.appendChild(script);
+    };
+
+    loadScript();
 
     return () => {
       // Cleanup on unmount
-      const s = document.getElementById(scriptId);
-      if (s) s.remove();
+      cleanupScript();
+      if (retryTimeout) clearTimeout(retryTimeout);
     };
   }, [shouldLoad]);
 

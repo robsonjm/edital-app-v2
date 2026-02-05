@@ -16,21 +16,41 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
 
     // Inject Social Bar Script (SocialBar_Interstitial)
     const scriptId = 'adsterra-social-bar';
-    
-    // Cleanup previous script if exists to force reload
-    const existingScript = document.getElementById(scriptId);
-    if (existingScript) existingScript.remove();
+    let retryCount = 0;
+    const maxRetries = 3;
+    let retryTimeout;
 
-    const script = document.createElement('script');
-    script.id = scriptId;
-    // Add timestamp to force reload (cache busting)
-    script.src = `https://controlslaverystuffing.com/6f/8c/2f/6f8c2f808c585dbdb3bbbd5c5307aa4a.js?t=${Date.now()}`;
-    script.async = true;
-    script.type = 'text/javascript';
-    script.setAttribute('data-cfasync', 'false');
-    
-    // Append to body (standard for Social Bar/Interstitial)
-    document.body.appendChild(script);
+    const cleanupScript = () => {
+      const existingScript = document.getElementById(scriptId);
+      if (existingScript) existingScript.remove();
+    };
+
+    const loadScript = () => {
+      cleanupScript();
+
+      const script = document.createElement('script');
+      script.id = scriptId;
+      // Add timestamp to force reload (cache busting)
+      script.src = `https://controlslaverystuffing.com/6f/8c/2f/6f8c2f808c585dbdb3bbbd5c5307aa4a.js?t=${Date.now()}`;
+      script.async = true;
+      script.type = 'text/javascript';
+      script.setAttribute('data-cfasync', 'false');
+      
+      script.onerror = () => {
+        if (retryCount < maxRetries) {
+          retryCount++;
+          console.warn(`Adsterra Social Overlay failed to load. Retrying (${retryCount}/${maxRetries})...`);
+          retryTimeout = setTimeout(loadScript, 1000 * retryCount);
+        } else {
+            console.error('Adsterra Social Overlay failed to load after multiple attempts.');
+        }
+      };
+
+      // Append to body (standard for Social Bar/Interstitial)
+      document.body.appendChild(script);
+    };
+
+    loadScript();
 
     // Countdown Timer
     const timer = setInterval(() => {
@@ -49,8 +69,8 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
     return () => {
       clearInterval(timer);
       // Cleanup script to allow re-injection on next mount
-      const s = document.getElementById(scriptId);
-      if (s) s.remove();
+      cleanupScript();
+      if (retryTimeout) clearTimeout(retryTimeout);
     };
   }, [isOpen]);
 
