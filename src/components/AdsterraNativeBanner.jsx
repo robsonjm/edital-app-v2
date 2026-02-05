@@ -6,34 +6,70 @@ const AdsterraNativeBanner = ({ placementId = "4f94c235f19692ff0869b0fed85e691f"
   const [isLoaded, setIsLoaded] = useState(forceLoad);
   const [debugStatus, setDebugStatus] = useState('Initializing...');
 
+  // 1. Trigger Logic: Use IntersectionObserver to detect visibility
   useEffect(() => {
-    // Unique Container ID based on placement
+    if (forceLoad) {
+      setIsLoaded(true);
+      return;
+    }
+
+    if (isLoaded) return; // Already triggered
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            console.log(`[Adsterra] Banner ${placementId} is visible. Triggering load.`);
+            setIsLoaded(true);
+            observer.disconnect();
+          }
+        });
+      },
+      { rootMargin: '200px' } // Load when within 200px of viewport
+    );
+
+    if (bannerRef.current) {
+      observer.observe(bannerRef.current);
+    }
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [forceLoad, isLoaded, placementId]);
+
+  // 2. Script Injection Logic: Runs only when isLoaded becomes true
+  useEffect(() => {
+    if (!isLoaded) return;
+
     const containerId = `container-${placementId}`;
     const scriptId = `adsterra-native-script-${placementId.slice(0, 8)}`; 
     let retryCount = 0;
     const maxRetries = 3;
     let retryTimeout;
 
-    // Cleanup function
     const cleanupScript = () => {
       const existingScript = document.getElementById(scriptId);
       if (existingScript) existingScript.remove();
+      // Also clear container content to be safe
+      if (adContainerRef.current) {
+        adContainerRef.current.innerHTML = '';
+      }
     };
 
     const loadScript = () => {
-      cleanupScript();
+      // Don't full cleanup here to avoid flashing if retrying, 
+      // but we do need to remove the old script tag if it exists.
+      const existing = document.getElementById(scriptId);
+      if (existing) existing.remove();
+
       setDebugStatus('Loading script...');
 
-      // 1. Create the Script Element
       const script = document.createElement('script');
       script.id = scriptId;
       script.async = true;
       script.setAttribute('data-cfasync', 'false');
-      // Remove timestamp if it's causing 403, or keep it. 
-      // 403 Forbidden usually means domain block or invalid ID. 
-      // We will try standard URL without cache busting param to be safe against firewall rules.
       script.src = `//controlslaverystuffing.com/${placementId}/invoke.js`;
-      
+
       script.onload = () => {
         console.log(`[Adsterra] Native Banner script loaded for ${placementId}`);
         setDebugStatus('Script loaded. Rendering...');
@@ -45,7 +81,7 @@ const AdsterraNativeBanner = ({ placementId = "4f94c235f19692ff0869b0fed85e691f"
           const msg = `[Adsterra] Native Banner failed. Retrying (${retryCount}/${maxRetries})...`;
           console.warn(msg);
           setDebugStatus(msg);
-          retryTimeout = setTimeout(loadScript, 3000 * retryCount); // Slower backoff
+          retryTimeout = setTimeout(loadScript, 3000 * retryCount);
         } else {
             const msg = '[Adsterra] Native Banner failed. 403/Network Error.';
             console.error(msg);
@@ -53,48 +89,27 @@ const AdsterraNativeBanner = ({ placementId = "4f94c235f19692ff0869b0fed85e691f"
         }
       };
 
-      // 2. Inject into the UNMANAGED container
       if (adContainerRef.current) {
-         adContainerRef.current.innerHTML = ''; // Safe: React doesn't manage children of this specific div
+         // Only clear and recreate structure if it's the first attempt
+         // or if we need to ensure a clean slate. 
+         // For Adsterra, invoke.js writes to where it is, or document.write.
+         // We'll stick to the "append div + append script" pattern.
          
-         // Create the specific div that Adsterra's invoke.js often looks for
-         // (Though invoke.js usually writes to document.write or current script location)
-         // We append the script *inside* our container so it writes there.
-         
+         adContainerRef.current.innerHTML = '';
          const innerDiv = document.createElement('div');
-         innerDiv.id = containerId; // Specific ID often required
+         innerDiv.id = containerId;
          adContainerRef.current.appendChild(innerDiv);
          adContainerRef.current.appendChild(script);
-         
-         console.log(`[Adsterra] Injected script for ${placementId}`);
       }
     };
 
-    // Lazy Loading Logic
-    const handleScroll = () => {
-      if (isLoaded) return;
-      const scrollPosition = window.innerHeight + window.scrollY;
-      const threshold = document.body.offsetHeight - 500; 
+    loadScript();
 
-      if (scrollPosition >= threshold) {
-        setIsLoaded(true);
-        loadScript();
-      }
-    };
-
-    if (forceLoad || document.body.offsetHeight <= window.innerHeight + 100) {
-         if (!isLoaded) setIsLoaded(true);
-         loadScript();
-    } else {
-        window.addEventListener('scroll', handleScroll);
-    }
-    
     return () => {
-      window.removeEventListener('scroll', handleScroll);
       clearTimeout(retryTimeout);
       cleanupScript();
     };
-  }, [placementId, isLoaded, forceLoad]); 
+  }, [isLoaded, placementId]); // Dependency only on isLoaded state and ID
 
   return (
     <div 
