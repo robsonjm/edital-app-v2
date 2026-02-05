@@ -233,13 +233,50 @@ const NewsView = ({ isPremium }) => {
   const navigate = useNavigate();
   const [aiTrends, setAiTrends] = useState(null);
   const [loadingTrends, setLoadingTrends] = useState(false);
+  
+  // News States
+  const [news, setNews] = useState([]);
+  const [loadingNews, setLoadingNews] = useState(true);
+  const [newsError, setNewsError] = useState(null);
+  
+  // Filters
+  const [uf, setUf] = useState('');
+  const [city, setCity] = useState('');
 
-  const mockNews = [
-    { id: 1, title: "Concurso Nacional Unificado (CNU)", date: "03 Fev 2026", summary: "Divulgada a previsão para a segunda edição do CNU. Órgãos federais já começam a manifestar interesse em participar do novo certame unificado.", tag: "Federal" },
-    { id: 2, title: "Receita Federal 2026", date: "01 Fev 2026", summary: "Fontes indicam solicitação de novo edital para Auditor e Analista ainda este ano. Déficit de servidores impulsiona o pedido.", tag: "Fiscal" },
-    { id: 3, title: "Polícia Federal Administrativa", date: "30 Jan 2026", summary: "Movimentações para reestruturação da carreira administrativa da PF podem acelerar a publicação de novo edital.", tag: "Policial" },
-    { id: 4, title: "Tecnologia em Concursos", date: "28 Jan 2026", summary: "Bancas examinadoras investem em sistemas anti-fraude baseados em IA para provas digitais e híbridas.", tag: "Tecnologia" }
+  const ufs = [
+    'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 
+    'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO'
   ];
+
+  const fetchNews = async () => {
+    setLoadingNews(true);
+    setNewsError(null);
+    try {
+        const queryParams = new URLSearchParams();
+        if (uf) queryParams.append('uf', uf);
+        if (city) queryParams.append('city', city);
+        
+        const response = await fetch(`/.netlify/functions/news-proxy?${queryParams.toString()}`);
+        if (!response.ok) throw new Error('Falha ao buscar notícias');
+        
+        const data = await response.json();
+        setNews(data.items || []);
+    } catch (err) {
+        console.error(err);
+        setNewsError("Não foi possível carregar as notícias. Verifique sua conexão.");
+    } finally {
+        setLoadingNews(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNews();
+  }, []);
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchNews();
+  };
 
   const generateTrends = async () => {
     setLoadingTrends(true);
@@ -263,30 +300,74 @@ const NewsView = ({ isPremium }) => {
   };
 
   return (
-    <div className="max-w-5xl mx-auto py-10 animate-in fade-in">
+    <div className="max-w-6xl mx-auto py-10 animate-in fade-in px-4">
       <button onClick={() => navigate('/')} className="text-slate-400 hover:text-blue-600 flex items-center gap-1 text-sm mb-8 font-bold"><ChevronLeft className="w-4 h-4" /> Voltar ao Painel</button>
       <header className="mb-10">
           <div className="flex items-center gap-3 text-blue-600 font-black uppercase text-[10px] tracking-widest mb-2"><Globe className="w-4 h-4" /> Atualizações & Insights</div>
           <h1 className="text-4xl font-black leading-tight text-slate-900 dark:text-white tracking-tight">News Center</h1>
           <p className="text-slate-500 mt-2">Fique por dentro do mundo dos concursos públicos.</p>
       </header>
+      
       {!isPremium && <AdsterraNativeBanner />}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
           <div className="lg:col-span-2 space-y-6">
-              <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-white"><Newspaper className="w-5 h-5 text-blue-500" /> Últimas Notícias</h3>
-              <div className="grid gap-4">
-                  {mockNews.map(news => (
-                      <Card key={news.id} className="p-6 hover:border-blue-300 transition-all group">
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-white"><Newspaper className="w-5 h-5 text-blue-500" /> Últimas Notícias</h3>
+                
+                <form onSubmit={handleSearch} className="flex gap-2 w-full sm:w-auto bg-white dark:bg-slate-800 p-1 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm">
+                  <select 
+                    value={uf} 
+                    onChange={(e) => setUf(e.target.value)}
+                    className="bg-transparent border-none text-sm font-bold text-slate-600 dark:text-slate-300 focus:ring-0 cursor-pointer w-20"
+                  >
+                    <option value="">UF</option>
+                    {ufs.map(u => <option key={u} value={u}>{u}</option>)}
+                  </select>
+                  <div className="w-px bg-slate-200 dark:bg-slate-700 my-1"></div>
+                  <input 
+                    type="text" 
+                    placeholder="Cidade (opcional)" 
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    className="bg-transparent border-none text-sm w-32 sm:w-48 focus:ring-0 dark:text-white"
+                  />
+                  <Button type="submit" size="sm" className="h-8 w-8 p-0 rounded-md"><Search className="w-4 h-4" /></Button>
+                </form>
+              </div>
+
+              <div className="space-y-4">
+                  {loadingNews ? (
+                    <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 text-blue-600 animate-spin" /></div>
+                  ) : newsError ? (
+                    <div className="p-8 text-center bg-red-50 rounded-xl text-red-600">
+                      <AlertTriangle className="w-8 h-8 mx-auto mb-2" />
+                      <p>{newsError}</p>
+                      <Button variant="ghost" onClick={fetchNews} className="mt-2 text-red-700 hover:bg-red-100">Tentar Novamente</Button>
+                    </div>
+                  ) : news.length === 0 ? (
+                    <div className="p-12 text-center bg-slate-50 dark:bg-slate-800/50 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700">
+                      <FileSearch className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                      <p className="text-slate-500 font-medium">Nenhuma notícia encontrada para este filtro.</p>
+                      <Button variant="link" onClick={() => { setUf(''); setCity(''); fetchNews(); }}>Limpar Filtros</Button>
+                    </div>
+                  ) : (
+                    news.map((item, idx) => (
+                      <Card key={idx} className="p-6 hover:border-blue-300 transition-all group">
                           <div className="flex justify-between items-start mb-3">
-                              <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider">{news.tag}</span>
-                              <span className="text-slate-400 text-xs font-medium">{news.date}</span>
+                              <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider truncate max-w-[200px]">{item.source}</span>
+                              <span className="text-slate-400 text-xs font-medium whitespace-nowrap">{new Date(item.pubDate).toLocaleDateString('pt-BR')}</span>
                           </div>
-                          <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2 group-hover:text-blue-600 transition-colors">{news.title}</h4>
-                          <p className="text-slate-500 text-sm leading-relaxed">{news.summary}</p>
+                          <a href={item.link} target="_blank" rel="noopener noreferrer" className="block group-hover:text-blue-600 transition-colors">
+                            <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2 leading-snug">{item.title}</h4>
+                          </a>
+                          <div className="text-slate-500 text-sm leading-relaxed line-clamp-3" dangerouslySetInnerHTML={{ __html: item.contentSnippet || '' }}></div>
                       </Card>
-                  ))}
+                    ))
+                  )}
               </div>
           </div>
+          
           <div className="space-y-6">
               <h3 className="text-xl font-bold flex items-center gap-2 text-slate-800 dark:text-white"><TrendingUp className="w-5 h-5 text-purple-500" /> Radar de Tendências</h3>
               <Card className="p-6 bg-slate-900 text-white border-none shadow-xl relative overflow-hidden">
@@ -301,6 +382,9 @@ const NewsView = ({ isPremium }) => {
                       </div>
                   )}
               </Card>
+
+              {/* Extra Ads or Info */}
+              {!isPremium && <div className="mt-4"><AdsterraNativeBanner /></div>}
           </div>
       </div>
     </div>
