@@ -1,97 +1,120 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-const AdsterraNativeBanner = () => {
+const AdsterraNativeBanner = ({ placementId = "4f94c235f19692ff0869b0fed85e691f" }) => {
   const bannerRef = useRef(null);
-  const [shouldLoad, setShouldLoad] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const checkScroll = () => {
-      // Check if user has scrolled to the bottom (with 100px buffer)
-      // Or if the page is not scrollable (content fits in window)
-      const isBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - 100;
-      const isNotScrollable = document.body.offsetHeight <= window.innerHeight;
-      
-      if (isBottom || isNotScrollable) {
-        setShouldLoad(true);
-      }
-    };
-
-    // Initial check
-    checkScroll();
-
-    window.addEventListener('scroll', checkScroll);
-    window.addEventListener('resize', checkScroll);
-
-    return () => {
-      window.removeEventListener('scroll', checkScroll);
-      window.removeEventListener('resize', checkScroll);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!shouldLoad) return;
-
-    const scriptId = 'adsterra-native-script-4f94c235';
+    // Unique Container ID based on placement
+    const containerId = `container-${placementId}`;
+    
+    // Inject container div if not present (handled by JSX below, but we need to target it)
+    const scriptId = `adsterra-native-script-${placementId.slice(0, 8)}`; // Short hash for uniqueness
     let retryCount = 0;
     const maxRetries = 3;
     let retryTimeout;
-    
-    // Function to clean up script
+
+    // Cleanup function to remove script and configuration
     const cleanupScript = () => {
       const existingScript = document.getElementById(scriptId);
-      if (existingScript) {
-        existingScript.remove();
+      if (existingScript) existingScript.remove();
+      // Remove global config for this placement to ensure clean reload
+      if (window[`atOptions`]) {
+          // Ideally we would only remove the specific key, but Adsterra uses specific variable names usually.
+          // Native banners often use 'atOptions' object. We'll leave it for now as we want to reload.
       }
     };
 
     const loadScript = () => {
-      cleanupScript(); // Ensure clean slate
+      cleanupScript();
 
+      // Configure Adsterra Options
+      const atOptionsScript = document.createElement('script');
+      atOptionsScript.type = 'text/javascript';
+      atOptionsScript.innerHTML = `
+        var atOptions = {
+          'key' : '${placementId}',
+          'format' : 'iframe',
+          'height' : 250,
+          'width' : 300,
+          'params' : {}
+        };
+      `;
+      // Note: Native Banners usually use a different config structure (invoke.js usually expects a specific container).
+      // Let's stick to the INVOKE pattern seen in previous code which didn't use atOptions but relied on the URL.
+      // Wait, the previous code was: 
+      // script.src = `https://controlslaverystuffing.com/${placementId}/invoke.js?t=${Date.now()}`;
+      // And it looked for a container.
+      
       const script = document.createElement('script');
       script.id = scriptId;
-      // Add timestamp to force reload (cache busting)
-      script.src = `https://controlslaverystuffing.com/4f94c235f19692ff0869b0fed85e691f/invoke.js?t=${Date.now()}`;
       script.async = true;
+      script.src = `https://controlslaverystuffing.com/${placementId}/invoke.js?t=${Date.now()}`;
       script.setAttribute('data-cfasync', 'false');
-      
+
       script.onerror = () => {
         if (retryCount < maxRetries) {
           retryCount++;
-          console.warn(`Adsterra Native Banner failed to load. Retrying (${retryCount}/${maxRetries})...`);
-          retryTimeout = setTimeout(loadScript, 1000 * retryCount); // Progressive backoff
+          console.warn(`Adsterra Native Banner (${placementId}) failed to load. Retrying (${retryCount}/${maxRetries})...`);
+          retryTimeout = setTimeout(loadScript, 1000 * retryCount);
         } else {
-          console.error('Adsterra Native Banner failed to load after multiple attempts.');
+            console.error('Adsterra Native Banner failed to load after multiple attempts.');
         }
       };
 
-      // Append to body
-      document.body.appendChild(script);
+      if (bannerRef.current) {
+         bannerRef.current.innerHTML = ''; // Clear previous content
+         // Re-create the specific container div required by the invoke.js script
+         const containerDiv = document.createElement('div');
+         containerDiv.id = containerId;
+         bannerRef.current.appendChild(containerDiv);
+         bannerRef.current.appendChild(script);
+      }
+    };
 
-      // Check if ad loaded successfully after a few seconds
-      setTimeout(() => {
-        const container = document.getElementById('container-4f94c235f19692ff0869b0fed85e691f');
+    // Lazy Loading Logic
+    const handleScroll = () => {
+      if (isLoaded) return;
+      const scrollPosition = window.innerHeight + window.scrollY;
+      const threshold = document.body.offsetHeight - 500; // Load 500px before bottom
+
+      if (scrollPosition >= threshold) {
+        setIsLoaded(true);
+        loadScript();
+      }
+    };
+
+    // If page is short, load immediately
+    if (document.body.offsetHeight <= window.innerHeight + 100) {
+         setIsLoaded(true);
+         loadScript();
+    } else {
+        window.addEventListener('scroll', handleScroll);
+    }
+    
+    // Auto-hide logic (Check if container height is valid)
+    const checkVisibility = setTimeout(() => {
+        const container = document.getElementById(containerId);
         if (container && container.offsetHeight < 10) {
             console.warn('Adsterra banner likely blocked or failed to render. Hiding container.');
             if (bannerRef.current) bannerRef.current.style.display = 'none';
         }
-      }, 5000);
-    };
-
-    loadScript();
+    }, 5000);
 
     return () => {
-      // Cleanup on unmount
+      window.removeEventListener('scroll', handleScroll);
+      clearTimeout(retryTimeout);
+      clearTimeout(checkVisibility);
       cleanupScript();
-      if (retryTimeout) clearTimeout(retryTimeout);
     };
-  }, [shouldLoad]);
-
-  if (!shouldLoad) return null;
+  }, [placementId, isLoaded]); // Re-run if placementId changes
 
   return (
-    <div className="w-full flex justify-center my-6" ref={bannerRef}>
-      {/* Min-height added to reduce CLS and make it visible during loading */}
-      <div id="container-4f94c235f19692ff0869b0fed85e691f" style={{ minHeight: '1px', minWidth: '1px' }}></div>
+    <div 
+        ref={bannerRef} 
+        className="my-8 flex justify-center items-center min-h-[250px] w-full bg-slate-50 rounded-lg"
+    >
+      {/* Script injects here */}
     </div>
   );
 };

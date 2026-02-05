@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
 // import AdsterraNativeBanner from './AdsterraNativeBanner';
 
-const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
+const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose, placementId = "6f8c2f808c585dbdb3bbbd5c5307aa4a" }) => {
   const [timeLeft, setTimeLeft] = useState(10);
   const [canClose, setCanClose] = useState(false);
   const adContainerRef = React.useRef(null);
@@ -15,7 +15,7 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
     setCanClose(false);
 
     // Inject Social Bar Script (SocialBar_Interstitial)
-    const scriptId = 'adsterra-social-bar';
+    const scriptId = `adsterra-social-bar-${placementId.slice(0, 8)}`;
     let retryCount = 0;
     const maxRetries = 3;
     let retryTimeout;
@@ -30,8 +30,14 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
 
       const script = document.createElement('script');
       script.id = scriptId;
+      // Construct URL from placementId (chunked: 2/2/2/full)
+      // Example: 6f8c2f80... -> 6f/8c/2f/6f8c2f80...
+      const p1 = placementId.slice(0, 2);
+      const p2 = placementId.slice(2, 4);
+      const p3 = placementId.slice(4, 6);
+      
       // Add timestamp to force reload (cache busting)
-      script.src = `https://controlslaverystuffing.com/6f/8c/2f/6f8c2f808c585dbdb3bbbd5c5307aa4a.js?t=${Date.now()}`;
+      script.src = `https://controlslaverystuffing.com/${p1}/${p2}/${p3}/${placementId}.js?t=${Date.now()}`;
       script.async = true;
       script.type = 'text/javascript';
       script.setAttribute('data-cfasync', 'false');
@@ -39,7 +45,7 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
       script.onerror = () => {
         if (retryCount < maxRetries) {
           retryCount++;
-          console.warn(`Adsterra Social Overlay failed to load. Retrying (${retryCount}/${maxRetries})...`);
+          console.warn(`Adsterra Social Overlay (${placementId}) failed to load. Retrying (${retryCount}/${maxRetries})...`);
           retryTimeout = setTimeout(loadScript, 1000 * retryCount);
         } else {
             console.error('Adsterra Social Overlay failed to load after multiple attempts.');
@@ -80,7 +86,7 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
       cleanupScript();
       if (retryTimeout) clearTimeout(retryTimeout);
     };
-  }, [isOpen]);
+  }, [isOpen, placementId]);
 
   const handleClose = () => {
     if (!canClose) return;
