@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-const AdsterraNativeBanner = ({ placementId = "4f94c235f19692ff0869b0fed85e691f" }) => {
+const AdsterraNativeBanner = ({ placementId = "4f94c235f19692ff0869b0fed85e691f", forceLoad = false }) => {
   const bannerRef = useRef(null); // Ref for the wrapper
   const adContainerRef = useRef(null); // Ref for the ad container (unmanaged by React)
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(forceLoad);
   const [debugStatus, setDebugStatus] = useState('Initializing...');
 
   useEffect(() => {
@@ -82,8 +82,8 @@ const AdsterraNativeBanner = ({ placementId = "4f94c235f19692ff0869b0fed85e691f"
       }
     };
 
-    if (document.body.offsetHeight <= window.innerHeight + 100) {
-         setIsLoaded(true);
+    if (forceLoad || document.body.offsetHeight <= window.innerHeight + 100) {
+         if (!isLoaded) setIsLoaded(true);
          loadScript();
     } else {
         window.addEventListener('scroll', handleScroll);
@@ -94,7 +94,7 @@ const AdsterraNativeBanner = ({ placementId = "4f94c235f19692ff0869b0fed85e691f"
       clearTimeout(retryTimeout);
       cleanupScript();
     };
-  }, [placementId, isLoaded]); 
+  }, [placementId, isLoaded, forceLoad]); 
 
   return (
     <div 

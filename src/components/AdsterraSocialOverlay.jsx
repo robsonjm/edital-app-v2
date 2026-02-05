@@ -1,71 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
-// import AdsterraNativeBanner from './AdsterraNativeBanner';
+import AdsterraNativeBanner from './AdsterraNativeBanner';
 
-const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose, placementId = "6f8c2f808c585dbdb3bbbd5c5307aa4a" }) => {
+const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
   const [timeLeft, setTimeLeft] = useState(10);
   const [canClose, setCanClose] = useState(false);
-  const adContainerRef = React.useRef(null);
-
+  
   useEffect(() => {
     if (!isOpen) return;
-
-    console.log(`[Adsterra] Social Overlay opened for ${placementId}`);
 
     // Reset state
     setTimeLeft(10);
     setCanClose(false);
-
-    // Inject Social Bar Script (SocialBar_Interstitial)
-    const scriptId = `adsterra-social-bar-${placementId.slice(0, 8)}`;
-    let retryCount = 0;
-    const maxRetries = 3;
-    let retryTimeout;
-
-    const cleanupScript = () => {
-      const existingScript = document.getElementById(scriptId);
-      if (existingScript) existingScript.remove();
-      // Try to remove Adsterra global if possible (difficult without exact name)
-    };
-
-    const loadScript = () => {
-      cleanupScript();
-
-      const script = document.createElement('script');
-      script.id = scriptId;
-      // Construct URL from placementId (chunked: 2/2/2/full)
-      const p1 = placementId.slice(0, 2);
-      const p2 = placementId.slice(2, 4);
-      const p3 = placementId.slice(4, 6);
-      
-      // Add timestamp to force reload (cache busting)
-      script.src = `https://controlslaverystuffing.com/${p1}/${p2}/${p3}/${placementId}.js?t=${Date.now()}`;
-      script.async = true;
-      script.type = 'text/javascript';
-      script.setAttribute('data-cfasync', 'false');
-      
-      script.onload = () => {
-          console.log(`[Adsterra] Social Overlay script loaded for ${placementId}`);
-      };
-
-      script.onerror = () => {
-        if (retryCount < maxRetries) {
-          retryCount++;
-          console.warn(`[Adsterra] Social Overlay (${placementId}) failed to load. Retrying (${retryCount}/${maxRetries})...`);
-          retryTimeout = setTimeout(loadScript, 2000 * retryCount);
-        } else {
-            console.error('[Adsterra] Social Overlay failed to load after multiple attempts. Network/AV blocking likely.');
-            // Allow user to close immediately if ad fails completely
-            setCanClose(true);
-            setTimeLeft(0);
-        }
-      };
-
-      // Append to body (standard for Social Bar/Interstitial)
-      document.body.appendChild(script);
-    };
-
-    loadScript();
 
     // Countdown Timer
     const timer = setInterval(() => {
@@ -81,11 +27,8 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose, placementId = "6f8
 
     return () => {
       clearInterval(timer);
-      // Cleanup script to allow re-injection on next mount
-      cleanupScript();
-      if (retryTimeout) clearTimeout(retryTimeout);
     };
-  }, [isOpen, placementId]);
+  }, [isOpen]);
 
   const handleClose = () => {
     if (!canClose) return;
@@ -120,26 +63,23 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose, placementId = "6f8
       </div>
 
       {/* Main Content / Ad Area */}
-      <div className="flex-1 w-full flex flex-col items-center justify-center my-8 min-h-[300px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl relative">
+      <div className="flex-1 w-full flex flex-col items-center justify-center my-8 min-h-[300px] max-w-4xl relative">
         
-        {/* Central Timer/Status Indicator (Floating in the middle of ad space if needed, or just above) */}
-        <div className="mb-8 scale-150 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none opacity-20">
-          {canClose ? (
-             <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center animate-in zoom-in">
-               <X className="w-8 h-8" />
-             </div>
-          ) : (
-            <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center relative">
+        {/* Central Timer/Status Indicator (Floating in the middle of ad space) */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none">
+          {!canClose && (
+            <div className="w-16 h-16 bg-blue-100/90 backdrop-blur-sm text-blue-600 rounded-full flex items-center justify-center relative shadow-lg">
               <Loader2 className="w-8 h-8 animate-spin" />
               <span className="absolute font-bold text-xs">{timeLeft}</span>
             </div>
           )}
         </div>
 
-        {/* Placeholder text (will be covered by ad if it loads) */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <p className="text-slate-300 text-sm">Carregando patrocinador...</p>
+        {/* Adsterra Native Banner (replacing Interstitial) */}
+        <div className="w-full h-full flex items-center justify-center">
+             <AdsterraNativeBanner forceLoad={true} />
         </div>
+
       </div>
 
       {/* Footer / Action Button */}
