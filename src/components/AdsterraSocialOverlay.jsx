@@ -43,6 +43,9 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
           retryTimeout = setTimeout(loadScript, 1000 * retryCount);
         } else {
             console.error('Adsterra Social Overlay failed to load after multiple attempts.');
+            // Allow user to close immediately if ad fails completely
+            setCanClose(true);
+            setTimeLeft(0);
         }
       };
 
@@ -51,6 +54,11 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
     };
 
     loadScript();
+
+    // Fallback: If ad script loads but fails to render (silent failure/network block),
+    // we can't easily detect it cross-origin, but we ensure the user isn't stuck forever
+    // by sticking to the timer. However, if we could detect "no ad", we'd close earlier.
+    // For now, the timer is the safe fallback.
 
     // Countdown Timer
     const timer = setInterval(() => {
@@ -98,6 +106,12 @@ const AdsterraSocialOverlay = ({ onComplete, isOpen, onClose }) => {
             ? "Obrigado por aguardar. Você já pode acessar seu recurso." 
             : "Aguarde alguns segundos enquanto carregamos nossos patrocinadores. Isso mantém o Edital Master gratuito."}
         </p>
+        {/* Error hint for user context if they are stuck */}
+        {!canClose && (
+            <p className="text-xs text-slate-300 mt-2">
+                Se o anúncio não carregar, o botão será liberado automaticamente em {timeLeft}s.
+            </p>
+        )}
       </div>
 
       {/* Main Content / Ad Area */}
