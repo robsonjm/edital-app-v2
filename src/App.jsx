@@ -282,26 +282,51 @@ const NewsDetailView = ({ isPremium }) => {
     <div className="max-w-4xl mx-auto py-10 animate-in fade-in px-4">
       <button onClick={() => navigate('/news')} className="text-slate-400 hover:text-blue-600 flex items-center gap-1 text-sm mb-8 font-bold"><ChevronLeft className="w-4 h-4" /> Voltar para Notícias</button>
       
-      <article className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-800">
-         <header className="mb-8 border-b pb-8 border-slate-100 dark:border-slate-800">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider">{article.category || 'Concursos'}</span>
-              <span className="text-slate-400 text-xs font-bold flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(article.pubDate?.seconds * 1000 || article.createdAt?.seconds * 1000 || Date.now()).toLocaleDateString('pt-BR')}</span>
-            </div>
-            <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white leading-tight mb-4">{article.title}</h1>
-         </header>
+      <article className="bg-white dark:bg-slate-900 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-800 overflow-hidden">
+         {article.imageUrl && (
+           <div className="w-full h-64 md:h-96 relative">
+             <img src={article.imageUrl} alt={article.title} className="w-full h-full object-cover" />
+             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent flex flex-col justify-end p-8">
+               <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider self-start mb-4 shadow-lg">{article.category || 'Concursos'}</span>
+               <h1 className="text-3xl md:text-5xl font-black text-white leading-tight drop-shadow-md">{article.title}</h1>
+             </div>
+           </div>
+         )}
 
-         {!isPremium && <div className="mb-8"><AdsterraNativeBanner /></div>}
+         <div className="p-8 md:p-12">
+           {!article.imageUrl && (
+             <header className="mb-8 border-b pb-8 border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider">{article.category || 'Concursos'}</span>
+                  <span className="text-slate-400 text-xs font-bold flex items-center gap-1"><Calendar className="w-3 h-3" /> {new Date(article.pubDate?.seconds * 1000 || article.createdAt?.seconds * 1000 || Date.now()).toLocaleDateString('pt-BR')}</span>
+                </div>
+                <h1 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white leading-tight mb-4">{article.title}</h1>
+             </header>
+           )}
 
-         <div className="prose prose-slate dark:prose-invert max-w-none leading-relaxed" dangerouslySetInnerHTML={{ __html: article.content || '' }}></div>
+           <div className="flex items-center gap-4 mb-8 text-sm text-slate-500 border-b border-slate-100 dark:border-slate-800 pb-8">
+              <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500">EM</div>
+              <div>
+                <p className="font-bold text-slate-900 dark:text-white">Edital Master AI</p>
+                <p className="text-xs">{new Date(article.pubDate?.seconds * 1000 || article.createdAt?.seconds * 1000 || Date.now()).toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              </div>
+           </div>
 
-         <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800">
-            <p className="text-slate-500 text-sm mb-4 italic">Conteúdo gerado via IA. Fonte original: {article.originalSource}</p>
-            {article.originalLink && (
-              <a href={article.originalLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-blue-600 font-bold hover:underline">
-                 Ler na fonte original <ExternalLink className="w-4 h-4" />
-              </a>
-            )}
+           {!isPremium && <div className="mb-8"><AdsterraNativeBanner /></div>}
+
+           <div className="prose prose-lg prose-slate dark:prose-invert max-w-none leading-relaxed first-letter:text-5xl first-letter:font-black first-letter:text-blue-600 first-letter:mr-3 first-letter:float-left" dangerouslySetInnerHTML={{ __html: article.content || '' }}></div>
+
+           <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/50 p-6 rounded-2xl">
+              <p className="text-slate-500 text-sm mb-4 italic font-medium">Conteúdo gerado via IA com supervisão.</p>
+              <div className="flex flex-wrap gap-4 items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Fonte Original</span>
+                {article.originalLink ? (
+                  <a href={article.originalLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-blue-600 font-bold hover:underline bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700">
+                     Ler na fonte oficial <ExternalLink className="w-4 h-4" />
+                  </a>
+                ) : <span className="text-slate-400">Google News</span>}
+              </div>
+           </div>
          </div>
       </article>
 
@@ -338,11 +363,6 @@ const NewsView = ({ isPremium }) => {
         
         if (uf) constraints.unshift(where('uf', '==', uf));
         
-        // City search needs exact match or external search engine, 
-        // for now we filter in memory if needed or simple match if we had an index
-        // But to avoid index issues, let's fetch and filter in client if needed,
-        // OR just use UF filter.
-        
         const finalQuery = query(q, ...constraints);
         const snapshot = await getDocs(finalQuery);
         
@@ -352,6 +372,13 @@ const NewsView = ({ isPremium }) => {
           const cityNorm = city.toLowerCase();
           items = items.filter(i => i.city?.toLowerCase().includes(cityNorm) || i.title?.toLowerCase().includes(cityNorm));
         }
+        
+        // Ensure sorting by date descending (redundant if Firestore does it, but good for client-side merged data)
+        items.sort((a, b) => {
+            const dateA = a.createdAt?.seconds || 0;
+            const dateB = b.createdAt?.seconds || 0;
+            return dateB - dateA;
+        });
         
         setNews(items);
     } catch (err) {
@@ -364,7 +391,7 @@ const NewsView = ({ isPremium }) => {
 
   useEffect(() => {
     fetchNews();
-  }, []);
+  }, [uf]); // Refetch when UF changes
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -446,15 +473,30 @@ const NewsView = ({ isPremium }) => {
                     </div>
                   ) : (
                     news.map((item, idx) => (
-                      <Card key={idx} className="p-6 hover:border-blue-300 transition-all group">
-                          <div className="flex justify-between items-start mb-3">
-                              <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider truncate max-w-[200px]">{item.source || item.originalSource}</span>
-                              <span className="text-slate-400 text-xs font-medium whitespace-nowrap">{new Date(item.pubDate?.seconds * 1000 || item.createdAt?.seconds * 1000 || Date.now()).toLocaleDateString('pt-BR')}</span>
+                      <Card key={idx} className="p-0 overflow-hidden hover:shadow-xl transition-all group border-none ring-1 ring-slate-100 dark:ring-slate-800">
+                          <div className="flex flex-col sm:flex-row">
+                            {item.imageUrl && (
+                              <div className="w-full sm:w-48 h-48 sm:h-auto bg-slate-100 dark:bg-slate-800 relative flex-shrink-0">
+                                <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                              </div>
+                            )}
+                            <div className="p-6 flex flex-col justify-between flex-grow">
+                              <div>
+                                <div className="flex justify-between items-start mb-3">
+                                    <span className="bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider truncate max-w-[200px]">{item.source || item.originalSource}</span>
+                                    <span className="text-slate-400 text-xs font-medium whitespace-nowrap">{new Date(item.pubDate?.seconds * 1000 || item.createdAt?.seconds * 1000 || Date.now()).toLocaleDateString('pt-BR')}</span>
+                                </div>
+                                <div onClick={() => navigate(`/news/${item.slug}`)} className="cursor-pointer block group-hover:text-blue-600 transition-colors">
+                                  <h4 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2 leading-snug">{item.title}</h4>
+                                </div>
+                                <p className="text-slate-500 text-sm leading-relaxed line-clamp-2 mb-4">{item.summary}</p>
+                              </div>
+                              <div className="flex items-center justify-between mt-auto">
+                                <span className="text-xs font-bold text-slate-400">{item.uf} - {item.city || 'Nacional'}</span>
+                                <Button variant="link" size="sm" onClick={() => navigate(`/news/${item.slug}`)} className="p-0 h-auto">Ler mais <ChevronRight className="w-3 h-3 ml-1" /></Button>
+                              </div>
+                            </div>
                           </div>
-                          <div onClick={() => navigate(`/news/${item.slug}`)} className="cursor-pointer block group-hover:text-blue-600 transition-colors">
-                            <h4 className="text-lg font-bold text-slate-800 dark:text-slate-100 mb-2 leading-snug">{item.title}</h4>
-                          </div>
-                          <p className="text-slate-500 text-sm leading-relaxed line-clamp-3">{item.summary}</p>
                       </Card>
                     ))
                   )}
@@ -484,13 +526,16 @@ const NewsView = ({ isPremium }) => {
   );
 };
 
-const AnalyzeView = ({ onAnalyze, isProcessing, error, triggerAdBeforeAction }) => {
+const AnalyzeView = ({ onAnalyze, isProcessing, error, triggerAdBeforeAction, isPremium }) => {
   const [text, setText] = useState('');
   const fileInputRef = useRef(null);
   return (
     <Card className="max-w-3xl mx-auto p-12 text-center shadow-xl border-none">
       <h2 className="text-3xl font-black mb-2 uppercase tracking-tight">Análise de Edital</h2>
       <p className="text-slate-500 mb-10 text-sm font-medium">Extração de dados alimentada por IA.</p>
+      
+      {!isPremium && <AdsterraNativeBanner />}
+
       {error && (
         <div className="mb-8 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-start gap-3 text-left animate-in fade-in">
           <AlertTriangle className="w-6 h-6 text-red-600 shrink-0" />
@@ -512,7 +557,7 @@ const AnalyzeView = ({ onAnalyze, isProcessing, error, triggerAdBeforeAction }) 
   );
 };
 
-const EditalDetailsView = ({ editais }) => {
+const EditalDetailsView = ({ editais, isPremium }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const edital = editais.find(e => e.id === id);
@@ -522,6 +567,9 @@ const EditalDetailsView = ({ editais }) => {
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-in fade-in">
       <button onClick={() => navigate('/')} className="text-slate-400 hover:text-blue-600 flex items-center gap-1 text-sm font-bold transition-colors"><ChevronLeft className="w-4 h-4" /> Voltar</button>
+      
+      {!isPremium && <AdsterraNativeBanner />}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
            <Card className="p-10 shadow-lg border-t-8 border-t-blue-600 border-none">
@@ -565,7 +613,7 @@ const EditalDetailsView = ({ editais }) => {
   );
 };
 
-const StudyCenterView = ({ editais, startStudySession, triggerAdBeforeAction }) => {
+const StudyCenterView = ({ editais, startStudySession, triggerAdBeforeAction, isPremium }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const edital = editais.find(e => e.id === id);
@@ -579,6 +627,9 @@ const StudyCenterView = ({ editais, startStudySession, triggerAdBeforeAction }) 
         <h2 className="text-4xl font-black italic uppercase tracking-tighter">Área de <span className="text-blue-600">Treinamento</span></h2>
         <p className="text-slate-500">Foco Total: <strong>{edital.nome}</strong></p>
       </div>
+      
+      {!isPremium && <AdsterraNativeBanner />}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-8 group hover:border-emerald-500" onClick={() => navigate(`/edital/${id}/library`)}>
           <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110"><Library className="w-8 h-8" /></div>
@@ -603,7 +654,7 @@ const StudyCenterView = ({ editais, startStudySession, triggerAdBeforeAction }) 
   );
 };
 
-const LibraryIndexView = ({ editais, generateStudyContent, triggerAdBeforeAction, isProcessing }) => {
+const LibraryIndexView = ({ editais, generateStudyContent, triggerAdBeforeAction, isProcessing, isPremium }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const edital = editais.find(e => e.id === id);
@@ -622,6 +673,9 @@ const LibraryIndexView = ({ editais, generateStudyContent, triggerAdBeforeAction
         </div>
       )}
       <button onClick={() => navigate(`/edital/${id}/study`)} className="text-slate-400 hover:text-blue-600 flex items-center gap-1 text-sm mb-8 font-bold"><ChevronLeft className="w-4 h-4" /> Voltar</button>
+      
+      {!isPremium && <div className="mb-6"><AdsterraNativeBanner /></div>}
+
       <div className="mb-10"><h2 className="text-3xl font-black mb-2">Biblioteca do Edital</h2><p className="text-slate-500 font-medium">Selecione uma matéria para acessar o resumo teórico e tirar dúvidas.</p></div>
       <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${isProcessing ? 'opacity-50 pointer-events-none filter blur-sm' : ''}`}>
         {edital.disciplinas?.map((d, i) => (<button key={i} onClick={() => triggerAdBeforeAction(() => generateStudyContent(edital, d))} className="p-5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-left flex items-center justify-between hover:border-emerald-500 transition-all group shadow-sm"><div className="flex items-center gap-4"><div className="w-10 h-10 bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600"><BookMarked className="w-5 h-5" /></div><span className="font-bold text-slate-700 dark:text-slate-200 text-sm">{d}</span></div><ChevronRight className="w-4 h-4 text-slate-300" /></button>))}
@@ -630,7 +684,7 @@ const LibraryIndexView = ({ editais, generateStudyContent, triggerAdBeforeAction
   );
 };
 
-const LibraryViewer = ({ studyContent, deepenedTopics, deepenStudyTopic, isProcessing, deepenQuery, setDeepenQuery }) => {
+const LibraryViewer = ({ studyContent, deepenedTopics, deepenStudyTopic, isProcessing, deepenQuery, setDeepenQuery, isPremium }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   
@@ -644,6 +698,9 @@ const LibraryViewer = ({ studyContent, deepenedTopics, deepenStudyTopic, isProce
           <div className="flex items-center gap-3 text-emerald-600 font-black uppercase text-[10px] tracking-widest mb-2"><Sparkles className="w-4 h-4" /> Mentoria Inteligente</div>
           <h1 className="text-4xl font-black leading-tight text-slate-900 dark:text-white tracking-tight">{studyContent.discipline}</h1>
         </header>
+        
+        {!isPremium && <AdsterraNativeBanner />}
+
         <section className="space-y-4">
           <h3 className="text-xl font-bold flex items-center gap-2"><FileText className="w-5 h-5 text-emerald-500" /> Resumo Estruturado</h3>
           <div className="text-slate-600 dark:text-slate-300 leading-relaxed bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-100 dark:border-slate-800 shadow-sm whitespace-pre-wrap text-sm md:text-base">
@@ -687,7 +744,7 @@ const LibraryViewer = ({ studyContent, deepenedTopics, deepenStudyTopic, isProce
   );
 };
 
-const QuizInterfaceView = ({ quizState, setQuizState, saveQuizResult }) => {
+const QuizInterfaceView = ({ quizState, setQuizState, saveQuizResult, isPremium }) => {
   const navigate = useNavigate();
   const { id } = useParams();
 
@@ -710,6 +767,9 @@ const QuizInterfaceView = ({ quizState, setQuizState, saveQuizResult }) => {
         <Trophy className="w-20 h-20 mx-auto mb-6 text-yellow-500" />
         <h2 className="text-4xl font-black mb-2 tracking-tight">Fim da Sessão</h2>
         <p className="text-slate-500 text-xl mb-10">Você acertou <span className="font-bold text-slate-900">{score}</span> de <span className="font-bold text-slate-900">{questions.length}</span> questões.</p>
+        
+        {!isPremium && <div className="mb-8"><AdsterraNativeBanner /></div>}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left mb-10 max-h-96 overflow-y-auto pr-4">
           {questions.map((q, i) => (
             <div key={i} className={`p-5 rounded-2xl border-2 ${answers[i] === q.correctIndex ? 'border-green-100 bg-green-50' : 'border-red-100 bg-red-50'}`}>
@@ -754,6 +814,8 @@ const QuizInterfaceView = ({ quizState, setQuizState, saveQuizResult }) => {
           {currentIndex + 1 === questions.length ? <Button className="px-8" onClick={handleFinish}>Entregar</Button> : <Button className="px-8" onClick={() => setQuizState({...quizState, currentIndex: currentIndex + 1})}>Próxima</Button>}
         </div>
       </Card>
+      
+      {!isPremium && <div className="mt-4"><AdsterraNativeBanner /></div>}
     </div>
   );
 };
@@ -1220,12 +1282,12 @@ const MainApp = () => {
           <Route path="/history" element={<HistoryView simuladosHistory={simuladosHistory} />} />
           <Route path="/news" element={<NewsView isPremium={isPremium} />} />
           <Route path="/news/:slug" element={<NewsDetailView isPremium={isPremium} />} />
-          <Route path="/analyze" element={<AnalyzeView onAnalyze={handleAnalyze} isProcessing={isProcessing} error={error} triggerAdBeforeAction={triggerAdBeforeAction} />} />
-          <Route path="/edital/:id" element={<EditalDetailsView editais={editais} />} />
-          <Route path="/edital/:id/study" element={<StudyCenterView editais={editais} startStudySession={startStudySession} triggerAdBeforeAction={triggerAdBeforeAction} />} />
-          <Route path="/edital/:id/library" element={<LibraryIndexView editais={editais} generateStudyContent={generateStudyContent} triggerAdBeforeAction={triggerAdBeforeAction} isProcessing={isProcessing} />} />
-          <Route path="/edital/:id/library/viewer" element={<LibraryViewer studyContent={studyContent} deepenedTopics={deepenedTopics} deepenStudyTopic={deepenStudyTopic} isProcessing={isProcessing} deepenQuery={deepenQuery} setDeepenQuery={setDeepenQuery} />} />
-          <Route path="/edital/:id/quiz" element={<QuizInterfaceView quizState={quizState} setQuizState={setQuizState} saveQuizResult={saveQuizResult} />} />
+          <Route path="/analyze" element={<AnalyzeView onAnalyze={handleAnalyze} isProcessing={isProcessing} error={error} triggerAdBeforeAction={triggerAdBeforeAction} isPremium={isPremium} />} />
+          <Route path="/edital/:id" element={<EditalDetailsView editais={editais} isPremium={isPremium} />} />
+          <Route path="/edital/:id/study" element={<StudyCenterView editais={editais} startStudySession={startStudySession} triggerAdBeforeAction={triggerAdBeforeAction} isPremium={isPremium} />} />
+          <Route path="/edital/:id/library" element={<LibraryIndexView editais={editais} generateStudyContent={generateStudyContent} triggerAdBeforeAction={triggerAdBeforeAction} isProcessing={isProcessing} isPremium={isPremium} />} />
+          <Route path="/edital/:id/library/viewer" element={<LibraryViewer studyContent={studyContent} deepenedTopics={deepenedTopics} deepenStudyTopic={deepenStudyTopic} isProcessing={isProcessing} deepenQuery={deepenQuery} setDeepenQuery={setDeepenQuery} isPremium={isPremium} />} />
+          <Route path="/edital/:id/quiz" element={<QuizInterfaceView quizState={quizState} setQuizState={setQuizState} saveQuizResult={saveQuizResult} isPremium={isPremium} />} />
         </Routes>
       </main>
       <Footer />

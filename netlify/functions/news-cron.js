@@ -110,6 +110,7 @@ export default async (req) => {
           2. Destaque salários, vagas, cargos e prazos se houver.
           3. IMPORTANTE: Extraia a UF (Estado com 2 letras) e a Cidade se possível. Se for nacional, UF="BR".
           4. NÃO invente dados. Se faltar informação, foque no que existe.
+          5. Gere 3 palavras-chave visuais em inglês para buscar uma imagem de capa (ex: "student", "book", "lawyer", "brazil flag").
           
           Retorne APENAS um JSON válido neste formato (sem markdown, sem \`\`\`json):
           {
@@ -117,7 +118,8 @@ export default async (req) => {
             "content": "<p>Texto da notícia em HTML...</p>",
             "summary": "Resumo curto para card...",
             "uf": "SP",
-            "city": "São Paulo"
+            "city": "São Paulo",
+            "imageKeywords": "study, exam, university"
           }
         `;
 
@@ -132,6 +134,10 @@ export default async (req) => {
           const article = JSON.parse(text);
 
           const slug = slugify(article.title, { lower: true, strict: true }) + '-' + Date.now().toString().slice(-4);
+          
+          // Generate Image URL using Pollinations.ai with the keywords
+          const imagePrompt = article.imageKeywords ? encodeURIComponent(article.imageKeywords) : 'education';
+          const imageUrl = `https://image.pollinations.ai/prompt/${imagePrompt}?width=800&height=600&nologo=true`;
 
           await newsRef.add({
             title: article.title,
@@ -140,6 +146,7 @@ export default async (req) => {
             summary: article.summary,
             uf: article.uf || 'BR',
             city: article.city || null,
+            imageUrl: imageUrl,
             originalTitle: item.title,
             originalLink: item.link,
             originalSource: item.source || 'Google News',
