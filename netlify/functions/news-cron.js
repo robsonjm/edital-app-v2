@@ -66,8 +66,8 @@ export default async (req) => {
 
   // Initialize Gemini inside handler
   const genAI = new GoogleGenerativeAI(apiKey);
-  // Use gemini-1.5-flash which is generally available and stable
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  // Reverting to gemini-2.0-flash as requested by user
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   // 1. Define Sources / Queries
   const queries = [
