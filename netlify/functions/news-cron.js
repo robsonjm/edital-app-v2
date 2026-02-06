@@ -8,24 +8,35 @@ import slugify from 'slugify';
 // Initialize RSS Parser
 const parser = new Parser();
 
-// Initialize Firebase Admin
-// Note: We need FIREBASE_SERVICE_ACCOUNT environment variable containing the JSON
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT 
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT) 
-  : null;
-
-if (!getApps().length && serviceAccount) {
-  initializeApp({
-    credential: cert(serviceAccount)
-  });
+// Initialize Firebase Admin (Moved inside handler or safe scope if needed, but keeping global for caching)
+let serviceAccount = null;
+try {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    // Sanitize private key - critical for Netlify env vars
+    if (serviceAccount.private_key) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+  }
+} catch (e) {
+  console.error("Error parsing FIREBASE_SERVICE_ACCOUNT:", e);
 }
 
-const db = serviceAccount ? getFirestore() : null;
+if (!getApps().length && serviceAccount) {
+  try {
+    initializeApp({
+      credential: cert(serviceAccount)
+    });
+  } catch (e) {
+    console.error("Error initializing Firebase Admin:", e);
+  }
+}
 
-// Initialize Gemini
+const db = (serviceAccount && getApps().length) ? getFirestore() : null;
+
+// Initialize Gemini (Moved inside handler to allow model config changes/safety)
 const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-const genAI = new GoogleGenerativeAI(apiKey || '');
-const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+// const genAI = ... (Initialized inside handler)
 
 export const config = {
   schedule: "@hourly"
@@ -35,14 +46,28 @@ export default async (req) => {
   console.log("Starting News Cron Job...");
 
   if (!db) {
-    console.error("Firebase Admin not initialized. Missing FIREBASE_SERVICE_ACCOUNT.");
-    return new Response("Firebase configuration missing", { status: 500 });
+    console.error("Firebase Admin not initialized. Missing or invalid FIREBASE_SERVICE_ACCOUNT.");
+    return new Response(JSON.stringify({ 
+      error: "Firebase configuration missing or invalid", 
+      details: "Check FIREBASE_SERVICE_ACCOUNT environment variable. Must be valid JSON." 
+    }), { 
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 
   if (!apiKey) {
     console.error("Gemini API Key missing.");
-    return new Response("Gemini configuration missing", { status: 500 });
+    return new Response(JSON.stringify({ error: "Gemini API Key missing" }), { 
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
   }
+
+  // Initialize Gemini inside handler
+  const genAI = new GoogleGenerativeAI(apiKey);
+  // Use gemini-1.5-flash which is generally available and stable
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   // 1. Define Sources / Queries
   const queries = [
@@ -60,8 +85,9 @@ export default async (req) => {
       
       const feed = await parser.parseURL(rssUrl);
       
-      // Process only the first 5 items to avoid spam/quota limits per run
-      const itemsToProcess = feed.items.slice(0, 5);
+      // Process only the first 3 items to avoid spam/quota limits per run
+      // Reduced from 5 to 3 to prevent Netlify Function timeout (10s limit for synchronous calls)
+      const itemsToProcess = feed.items.slice(0, 3);
 
       for (const item of itemsToProcess) {
         // 2. Check Deduplication

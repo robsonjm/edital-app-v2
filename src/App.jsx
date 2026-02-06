@@ -293,7 +293,7 @@ const NewsDetailView = ({ isPremium }) => {
 
          {!isPremium && <div className="mb-8"><AdsterraNativeBanner /></div>}
 
-         <div className="prose prose-slate dark:prose-invert max-w-none leading-relaxed" dangerouslySetInnerHTML={{ __html: article.content }}></div>
+         <div className="prose prose-slate dark:prose-invert max-w-none leading-relaxed" dangerouslySetInnerHTML={{ __html: article.content || '' }}></div>
 
          <div className="mt-12 pt-8 border-t border-slate-100 dark:border-slate-800">
             <p className="text-slate-500 text-sm mb-4 italic">Conteúdo gerado via IA. Fonte original: {article.originalSource}</p>
@@ -350,7 +350,7 @@ const NewsView = ({ isPremium }) => {
         
         if (city) {
           const cityNorm = city.toLowerCase();
-          items = items.filter(i => i.city?.toLowerCase().includes(cityNorm) || i.title.toLowerCase().includes(cityNorm));
+          items = items.filter(i => i.city?.toLowerCase().includes(cityNorm) || i.title?.toLowerCase().includes(cityNorm));
         }
         
         setNews(items);

@@ -1,17 +1,26 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Regra para a coleção 'users':
-    // Permite que o usuário leia e escreva APENAS nos seus próprios dados.
-    match /users/{userId}/{document=**} {
+
+    // 1. Regras para Notícias (Blog)
+    // Qualquer pessoa pode ler, mas ninguém (exceto Admin SDK) pode escrever pelo App
+    match /news/{newsId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // 2. Regras para Usuários (Premium, Perfil)
+    // O usuário só pode ler/escrever o SEU PRÓPRIO documento
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 3. Regras para Artefatos (Editais, Simulados, Mentoria)
+    // Estrutura: artifacts/edital-master-v3/users/{userId}/...
+    // O usuário tem controle total sobre tudo que está DENTRO da pasta dele
+    match /artifacts/{appId}/users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Se houver outras coleções globais, adicione regras aqui.
-    // Por exemplo, para permitir leitura pública de uma coleção 'configs':
-    // match /configs/{doc} {
-    //   allow read: if true;
-    // }
   }
 }
