@@ -603,7 +603,7 @@ const StudyCenterView = ({ editais, startStudySession, triggerAdBeforeAction }) 
   );
 };
 
-const LibraryIndexView = ({ editais, generateStudyContent, triggerAdBeforeAction }) => {
+const LibraryIndexView = ({ editais, generateStudyContent, triggerAdBeforeAction, isProcessing }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const edital = editais.find(e => e.id === id);
@@ -611,10 +611,19 @@ const LibraryIndexView = ({ editais, generateStudyContent, triggerAdBeforeAction
   if (!edital) return <div>Edital não encontrado</div>;
 
   return (
-    <div className="max-w-4xl mx-auto py-10 animate-in fade-in">
+    <div className="max-w-4xl mx-auto py-10 animate-in fade-in relative min-h-[50vh]">
+      {isProcessing && (
+        <div className="absolute inset-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-3xl transition-all duration-300">
+           <div className="bg-white dark:bg-slate-900 p-8 rounded-3xl shadow-2xl flex flex-col items-center border border-slate-100 dark:border-slate-800 animate-in zoom-in-95">
+             <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mb-4" />
+             <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Gerando Conteúdo...</h3>
+             <p className="text-slate-500 text-sm text-center max-w-[200px]">Aguarde enquanto a IA prepara seu material de estudo.</p>
+           </div>
+        </div>
+      )}
       <button onClick={() => navigate(`/edital/${id}/study`)} className="text-slate-400 hover:text-blue-600 flex items-center gap-1 text-sm mb-8 font-bold"><ChevronLeft className="w-4 h-4" /> Voltar</button>
       <div className="mb-10"><h2 className="text-3xl font-black mb-2">Biblioteca do Edital</h2><p className="text-slate-500 font-medium">Selecione uma matéria para acessar o resumo teórico e tirar dúvidas.</p></div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className={`grid grid-cols-1 sm:grid-cols-2 gap-4 ${isProcessing ? 'opacity-50 pointer-events-none filter blur-sm' : ''}`}>
         {edital.disciplinas?.map((d, i) => (<button key={i} onClick={() => triggerAdBeforeAction(() => generateStudyContent(edital, d))} className="p-5 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl text-left flex items-center justify-between hover:border-emerald-500 transition-all group shadow-sm"><div className="flex items-center gap-4"><div className="w-10 h-10 bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 group-hover:bg-emerald-50 group-hover:text-emerald-600"><BookMarked className="w-5 h-5" /></div><span className="font-bold text-slate-700 dark:text-slate-200 text-sm">{d}</span></div><ChevronRight className="w-4 h-4 text-slate-300" /></button>))}
       </div>
     </div>
@@ -1214,7 +1223,7 @@ const MainApp = () => {
           <Route path="/analyze" element={<AnalyzeView onAnalyze={handleAnalyze} isProcessing={isProcessing} error={error} triggerAdBeforeAction={triggerAdBeforeAction} />} />
           <Route path="/edital/:id" element={<EditalDetailsView editais={editais} />} />
           <Route path="/edital/:id/study" element={<StudyCenterView editais={editais} startStudySession={startStudySession} triggerAdBeforeAction={triggerAdBeforeAction} />} />
-          <Route path="/edital/:id/library" element={<LibraryIndexView editais={editais} generateStudyContent={generateStudyContent} triggerAdBeforeAction={triggerAdBeforeAction} />} />
+          <Route path="/edital/:id/library" element={<LibraryIndexView editais={editais} generateStudyContent={generateStudyContent} triggerAdBeforeAction={triggerAdBeforeAction} isProcessing={isProcessing} />} />
           <Route path="/edital/:id/library/viewer" element={<LibraryViewer studyContent={studyContent} deepenedTopics={deepenedTopics} deepenStudyTopic={deepenStudyTopic} isProcessing={isProcessing} deepenQuery={deepenQuery} setDeepenQuery={setDeepenQuery} />} />
           <Route path="/edital/:id/quiz" element={<QuizInterfaceView quizState={quizState} setQuizState={setQuizState} saveQuizResult={saveQuizResult} />} />
         </Routes>
