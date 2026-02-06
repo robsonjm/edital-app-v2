@@ -8,35 +8,42 @@ import slugify from 'slugify';
 // Initialize RSS Parser
 const parser = new Parser();
 
-// Initialize Firebase Admin (Moved inside handler or safe scope if needed, but keeping global for caching)
-let serviceAccount = null;
-try {
-  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    // Sanitize private key - critical for Netlify env vars
+// Helper to safely initialize Firebase
+function getFirebaseDb() {
+  try {
+    if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+      throw new Error("FIREBASE_SERVICE_ACCOUNT env var is missing");
+    }
+
+    // Check if already initialized to avoid "Default app already exists" error
+    if (getApps().length > 0) {
+      return getFirestore();
+    }
+
+    let serviceAccount;
+    try {
+      serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    } catch (e) {
+      throw new Error(`Failed to parse FIREBASE_SERVICE_ACCOUNT JSON: ${e.message}`);
+    }
+
+    // Sanitize private key
     if (serviceAccount.private_key) {
       serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    } else {
+      throw new Error("FIREBASE_SERVICE_ACCOUNT missing private_key field");
     }
-  }
-} catch (e) {
-  console.error("Error parsing FIREBASE_SERVICE_ACCOUNT:", e);
-}
 
-if (!getApps().length && serviceAccount) {
-  try {
     initializeApp({
       credential: cert(serviceAccount)
     });
-  } catch (e) {
-    console.error("Error initializing Firebase Admin:", e);
+
+    return getFirestore();
+  } catch (error) {
+    console.error("Firebase Init Error:", error);
+    throw error;
   }
 }
-
-const db = (serviceAccount && getApps().length) ? getFirestore() : null;
-
-// Initialize Gemini (Moved inside handler to allow model config changes/safety)
-const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
-// const genAI = ... (Initialized inside handler)
 
 export const config = {
   schedule: "@hourly"
@@ -45,48 +52,36 @@ export const config = {
 export default async (req) => {
   console.log("Starting News Cron Job...");
 
-  if (!db) {
-    console.error("Firebase Admin not initialized. Missing or invalid FIREBASE_SERVICE_ACCOUNT.");
-    return new Response(JSON.stringify({ 
-      error: "Firebase configuration missing or invalid", 
-      details: "Check FIREBASE_SERVICE_ACCOUNT environment variable. Must be valid JSON." 
-    }), { 
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
-
-  if (!apiKey) {
-    console.error("Gemini API Key missing.");
-    return new Response(JSON.stringify({ error: "Gemini API Key missing" }), { 
-      status: 500,
-      headers: { "Content-Type": "application/json" }
-    });
-  }
-
-  // Initialize Gemini inside handler
-  const genAI = new GoogleGenerativeAI(apiKey);
-  // Reverting to gemini-2.0-flash as requested by user
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-  // 1. Define Sources / Queries
-  const queries = [
-    'concurso público edital lançado',
-    'concurso prefeitura inscrições abertas',
-    'concurso tribunal'
-  ];
-
-  let newArticlesCount = 0;
-
   try {
+    // Initialize DB inside handler to catch configuration errors explicitly
+    const db = getFirebaseDb();
+
+    // Initialize Gemini
+    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is missing");
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+    // 1. Define Sources / Queries
+    const queries = [
+      'concurso público edital lançado',
+      'concurso prefeitura inscrições abertas',
+      'concurso tribunal'
+    ];
+    
+    let newArticlesCount = 0;
+    const logs = [];
+
     for (const q of queries) {
       const encodedQuery = encodeURIComponent(q);
       const rssUrl = `https://news.google.com/rss/search?q=${encodedQuery}&hl=pt-BR&gl=BR&ceid=BR:pt-419`;
       
       const feed = await parser.parseURL(rssUrl);
       
-      // Process only the first 3 items to avoid spam/quota limits per run
-      // Reduced from 5 to 3 to prevent Netlify Function timeout (10s limit for synchronous calls)
+      // Process only the first 3 items
       const itemsToProcess = feed.items.slice(0, 3);
 
       for (const item of itemsToProcess) {
@@ -106,26 +101,23 @@ export default async (req) => {
           Você é um jornalista especializado em concursos públicos no Brasil.
           Escreva uma notícia completa e original para um blog, baseada nas informações abaixo.
           
-          Título Original: ${item.title}
-          Resumo Original: ${item.contentSnippet}
-          Fonte: ${item.source || 'Google News'}
-          Data: ${item.pubDate}
+          Título original: ${item.title}
+          Conteúdo original (snippet): ${item.contentSnippet || item.content || ''}
+          Link original: ${item.link}
           
-          Diretrizes:
-          1. Crie um Título chamativo e otimizado para SEO (h1).
-          2. Escreva o conteúdo em formato HTML (sem tag <html> ou <body>, apenas o conteúdo interno). Use <h2>, <p>, <ul> onde apropriado.
-          3. O tom deve ser informativo, profissional e encorajador.
-          4. Inclua informações sobre cargos, salários e prazos se possível.
-          5. Extraia a UF (Sigla do Estado) e a Cidade se mencionado. Se for nacional, UF="BR".
-          6. No final, adicione uma chamada para ação para o usuário estudar com o Edital Master.
+          Regras:
+          1. Use linguagem formal e informativa.
+          2. Destaque salários, vagas, cargos e prazos se houver.
+          3. IMPORTANTE: Extraia a UF (Estado com 2 letras) e a Cidade se possível. Se for nacional, UF="BR".
+          4. NÃO invente dados. Se faltar informação, foque no que existe.
           
-          Retorne APENAS um objeto JSON com este formato (sem markdown code blocks):
+          Retorne APENAS um JSON válido neste formato (sem markdown, sem \`\`\`json):
           {
-            "title": "Novo Título",
-            "content": "<p>Conteúdo HTML...</p>",
-            "summary": "Resumo curto para card",
-            "uf": "SP", 
-            "city": "São Paulo" (ou null)
+            "title": "Título Chamativo para SEO",
+            "content": "<p>Texto da notícia em HTML...</p>",
+            "summary": "Resumo curto para card...",
+            "uf": "SP",
+            "city": "São Paulo"
           }
         `;
 
@@ -134,14 +126,13 @@ export default async (req) => {
           const response = await result.response;
           let text = response.text();
           
-          // Clean up if AI returns markdown code blocks
+          // Cleanup JSON
           text = text.replace(/```json/g, '').replace(/```/g, '').trim();
           
           const article = JSON.parse(text);
 
-          // 4. Save to Firestore
           const slug = slugify(article.title, { lower: true, strict: true }) + '-' + Date.now().toString().slice(-4);
-          
+
           await newsRef.add({
             title: article.title,
             slug: slug,
@@ -154,26 +145,38 @@ export default async (req) => {
             originalSource: item.source || 'Google News',
             pubDate: new Date(item.pubDate),
             createdAt: new Date(),
-            category: 'Concursos', // Can be improved with AI classification
+            category: 'Concursos',
             views: 0
           });
 
           newArticlesCount++;
-          console.log(`Saved: ${article.title}`);
+          logs.push(`Created: ${article.title} (${slug})`);
 
-        } catch (aiError) {
-          console.error(`Error generating content for ${item.title}:`, aiError);
+        } catch (error) {
+          console.error(`Error processing item ${item.title}:`, error);
+          logs.push(`Error on ${item.title}: ${error.message}`);
         }
       }
     }
 
-    return new Response(JSON.stringify({ success: true, processed: newArticlesCount }), {
+    return new Response(JSON.stringify({ 
+      success: true, 
+      newArticles: newArticlesCount,
+      logs: logs 
+    }), { 
       status: 200,
       headers: { "Content-Type": "application/json" }
     });
 
-  } catch (error) {
-    console.error("Cron Job Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  } catch (fatalError) {
+    console.error("Fatal Cron Error:", fatalError);
+    return new Response(JSON.stringify({ 
+      error: "Fatal Execution Error", 
+      message: fatalError.message,
+      stack: fatalError.stack 
+    }), { 
+      status: 500,
+      headers: { "Content-Type": "application/json" }
+    });
   }
 };
